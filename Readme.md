@@ -22,10 +22,10 @@ error type you have to make everything using N parser combinators generic across
 pain to write and makes everything harder to read.
 
 The best solution is to force everything into a single error type, but then you have to either depend on something
-like (anyhow)[https://github.com/dtolnay/anyhow] or you have to build in an error type and force everyone to comply
+like [anyhow](https://github.com/dtolnay/anyhow) or you have to build in an error type and force everyone to comply
 to it.
 
-(anyhow)[https://github.com/dtolnay/anyhow] is a good crate and I think people should use it in projects, but it feels
+[anyhow](https://github.com/dtolnay/anyhow) is a good crate and I think people should use it in projects, but it feels
 really bad to make people include it from a package, and even if I don't think anyone is going to use this I want to
 design it right, so I'm probably gonna make an error type.
 
@@ -42,7 +42,7 @@ yet. If I end up having a problem where I want to do this kinda thing. I'll figu
 really that concerned about it.
 
 # should I use this in a project?
-you can if you want but it's probably not as robust as something like (nom)[https://github.com/rust-bakery/nom]
+you can if you want but it's probably not as robust as something like [nom](https://github.com/rust-bakery/nom)
 I don't plan on putting it on crates.io or anything given that there is already a popular parser combinator library.
 
 # how do I build it?
