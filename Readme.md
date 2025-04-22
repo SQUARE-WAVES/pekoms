@@ -3,7 +3,7 @@ Mr Pekoms
 
 This is a parser combinator library I wrote as a learning exercise. I wanted to get some experience doing
 really functional type functional programming with rust and so parser combinators seemed like a way to do that
-the goal was to use a bunch of higher order functions and closures, get some practice with macros and making
+the goal was to use a bunch of higher order functions and closures, get some practice with macros and types and making
 generic stuff.
 
 # so did it work? Did you learn stuff?
@@ -15,19 +15,13 @@ and when and where simple, i.e. non proc macros can save some time.
 
 ## errors
 
-right now this library sucks WRT errors. It just uses Option, meaning if something fails to parse, or you try
-and run some kinda function on the value you get from parsing that might fail, it just returns None, so you don't 
-really know what happened. The issue is that since any parser or post parsing function might use a different
-error type you have to make everything using N parser combinators generic across N error types. Which is a huge
-pain to write and makes everything harder to read.
-
-The best solution is to force everything into a single error type, but then you have to either depend on something
-like [anyhow](https://github.com/dtolnay/anyhow) or you have to build in an error type and force everyone to comply
-to it.
-
-[anyhow](https://github.com/dtolnay/anyhow) is a good crate and I think people should use it in projects, but it feels
-really bad to make people include it from a package, and even if I don't think anyone is going to use this I want to
-design it right, so I'm probably gonna make an error type.
+right now this library sucks WRT errors. It's generic, but it basically leaves everything up to the user
+it doesn't do anything to help you get helpful messages. The examples aren't helpful either as I was
+lazy and just made everything return not very helpful numbers. As well, the sequential and iterative combinators
+require that you make everything return the same kind of error, which is a pain, you'd rather have some freebee
+way of just writing the errors you want and having the combinator put them together, rather than having to potentially
+make custom errors for your more complicated parsing types. At the point where every time you write a more complicated parser 
+you have to write an error type and call map_err a bunch of times it starts to feel like you might as well not use parser combinators.
 
 ## streams and other types of input
 

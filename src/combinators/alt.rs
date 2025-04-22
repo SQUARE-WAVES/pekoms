@@ -31,11 +31,13 @@ macro_rules! alt_parser_impl {
     impl<IN:Clone, $TG, $($MG),+ > Parser<IN,$TG> for Alt<IN,$TG,($($MG,)+)>
     where $($MG:Parser<IN,$TG>,)+
     {
-      fn parse(&self,txt:IN)->Option<($TG,IN)> {
+      type Error=();
+
+      fn parse(&self,txt:IN)->Result<($TG,IN),()> {
         let Alt{ ps:($($MG),+),.. } = self;
 
-        $( if let Some((v,r)) = $MG.parse(txt.clone()) { return Some((v,r)); })+
-        None
+        $( if let Ok((v,r)) = $MG.parse(txt.clone()) { return Ok((v,r)); })+
+        Err(())
       }
     }
   }
@@ -64,24 +66,24 @@ mod tests {
   use super::*;
 
   //some parsers
-  fn dog(inp:&str) -> Option<(&str,&str)> {
+  fn dog(inp:&str) -> Result<(&str,&str),&str> {
     match &inp[0..3] {
-      "dog" => Some((&inp[0..3],&inp[3..])),
-      _ => None    
+      "dog" => Ok((&inp[0..3],&inp[3..])),
+      _ => Err("oh no it's all bad")  
     }
   }
 
-  fn cat(inp:&str) -> Option<(&str,&str)> {
+  fn cat(inp:&str) -> Result<(&str,&str),&str> {
     match &inp[0..3] {
-      "cat" => Some((&inp[0..3],&inp[3..])),
-      _ => None
+      "cat" => Ok((&inp[0..3],&inp[3..])),
+      _ => Err("oh no its all bad")
     }
   }
 
-  fn fish(inp:&str) -> Option<(&str,&str)> {
+  fn fish(inp:&str) -> Result<(&str,&str),&str> {
     match &inp[0..4] {
-      "fish" => Some((&inp[0..4],&inp[4..])),
-      _ => None
+      "fish" => Ok((&inp[0..4],&inp[4..])),
+      _ => Err("oh no its all bad")
     }
   }
 
@@ -101,6 +103,6 @@ mod tests {
     assert_eq!("seldorf",res);
 
     let bad = z.parse("if you can't hang with the big dog, get off the porch");
-    assert!(bad.is_none());
+    assert!(bad.is_err());
   }
 }

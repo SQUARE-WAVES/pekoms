@@ -1,51 +1,51 @@
 use std::convert::TryInto;
 
-pub fn fixed_len(len:usize) -> impl Fn(&[u8]) -> Option<(&[u8],&[u8])> {
+pub fn fixed_len(len:usize) -> impl Fn(&[u8]) -> Result<(&[u8],&[u8]),usize> {
   move |input|{
     if input.len() >= len {
-      Some((&input[0..len],&input[len..]))
+      Ok((&input[0..len],&input[len..]))
     }
     else {
-      None
+      Err(0)
     }
   }
 }
 
-pub fn pfx(p:&'static [u8]) -> impl Fn(&[u8]) -> Option<(&[u8],&[u8])> {
+pub fn pfx(p:&'static [u8]) -> impl Fn(&[u8]) -> Result<(&[u8],&[u8]),usize> {
   move |input| {
-    input.strip_prefix(p).map(|r|(p,r))
+    input.strip_prefix(p).map(|r|(p,r)).ok_or(2)
   }
 }
 
 //this is awkward until we have something like concat_idents in std
 macro_rules! number_converter {
   ($fn_name:ident, $NT:ty) => {
-    pub fn $fn_name(input:&[u8]) -> Option<($NT,&[u8])> {
+    pub fn $fn_name(input:&[u8]) -> Result<($NT,&[u8]),usize> {
       const SZ : usize = std::mem::size_of::<$NT>();
 
       let (btz,rest) = input.split_at(SZ);
-      let bz : Option<[u8;SZ]> = btz.try_into().ok();
-      bz.map(<$NT>::from_ne_bytes).map(|u|(u,rest))
+      let bz = btz.try_into();
+      bz.map(<$NT>::from_ne_bytes).map(|u|(u,rest)).map_err(|_|101)
     }
   };
   
   ($fn_name:ident, $NT:ty, big_endian) => {
-    pub fn $fn_name(input:&[u8]) -> Option<($NT,&[u8])> {
+    pub fn $fn_name(input:&[u8]) -> Result<($NT,&[u8]),usize> {
       const SZ : usize = std::mem::size_of::<$NT>();
 
       let (btz,rest) = input.split_at(SZ);
-      let bz : Option<[u8;SZ]> = btz.try_into().ok();
-      bz.map(<$NT>::from_be_bytes).map(|u|(u,rest))
+      let bz = btz.try_into();
+      bz.map(<$NT>::from_be_bytes).map(|u|(u,rest)).map_err(|_|102)
     }
   };
 
   ($fn_name:ident, $NT:ty, little_endian) => {
-    pub fn $fn_name(input:&[u8]) -> Option<($NT,&[u8])> {
+    pub fn $fn_name(input:&[u8]) -> Result<($NT,&[u8]),usize> {
       const SZ : usize = std::mem::size_of::<$NT>();
 
       let (btz,rest) = input.split_at(SZ);
-      let bz : Option<[u8;SZ]> = btz.try_into().ok();
-      bz.map(<$NT>::from_le_bytes).map(|u|(u,rest))
+      let bz = btz.try_into();
+      bz.map(<$NT>::from_le_bytes).map(|u|(u,rest)).map_err(|_|102)
     }
   }
 }
