@@ -2,7 +2,8 @@ use pekoms::{
   Parser,
   alt::alt,
   iter,
-  basics::optional
+  basics::optional,
+  ErrorMsg
 };
 
 mod parsers;
@@ -21,46 +22,48 @@ enum Element<'a> {
   Obj(Vec<(&'a str,Element<'a>)>)
 }
 
-fn null(input:&str) -> Result<(Element,&str),usize> {
+fn null(input:&str) -> Result<(Element,&str),ErrorMsg> {
   pfx("null").map(|_|Element::Null).parse(input)
 }
 
-fn boolean(input:&str) -> Result<(Element,&str),usize> {
+fn boolean(input:&str) -> Result<(Element,&str),ErrorMsg> {
   let t = pfx("true").map(|_|Element::Bool(true));
   let f = pfx("false").map(|_|Element::Bool(false));
 
-  alt((t,f)).parse(input).map_err(|_|44)
+  alt((t,f)).parse(input).map_err(|_|"not a boolean".into())
 }
 
-fn num(input:&str) -> Result<(Element,&str),usize> {
+fn num(input:&str) -> Result<(Element,&str),ErrorMsg> {
   float.and_then(|out|
     out.parse::<f64>()
-    .map_err(|_|44)
+    .map_err(|_|"not a num".into())
     .map(Element::Number)
   )
   .parse(input)
 }
 
-fn txt(input:&str) -> Result<(Element,&str),usize> {
+fn txt(input:&str) -> Result<(Element,&str),ErrorMsg> {
   quoted.map(Element::String).parse(input)
 }
 
-fn sep(input:&str) -> Result<((),&str),usize> {
+fn sep(input:&str) -> Result<((),&str),ErrorMsg> {
   (optional(ws),pfx(","),optional(ws)).map(|_|()).parse(input)
 }
 
-fn elem(input:&str) -> Result<(Element,&str),usize> {
-  alt((null,boolean,num,txt,list,obj)).map_err(|_|44).parse(input)
+fn elem(input:&str) -> Result<(Element,&str),ErrorMsg> {
+  alt((null,boolean,num,txt,list,obj))
+  .map_err(|_|"not an element".into())
+  .parse(input)
 }
 
-fn list(input:&str) -> Result<(Element,&str),usize> {
+fn list(input:&str) -> Result<(Element,&str),ErrorMsg> {
   use iter::vector::sep_list;
 
   let seq = (pfx("["),optional(ws),sep_list(elem,sep),optional(ws),pfx("]"));
   seq.map(|(_open,_gap,elems,_end_gap,_close)|Element::List(elems)).parse(input)
 }
 
-fn obj(input:&str) -> Result<(Element,&str),usize> {
+fn obj(input:&str) -> Result<(Element,&str),ErrorMsg> {
   use iter::vector::sep_list;
   let pair = (quoted,optional(ws),pfx(":"),optional(ws),elem).map(|(k,_,_,_,v)|(k,v));
   let seq = (pfx("{"),optional(ws),sep_list(pair,sep),optional(ws),pfx("}"));

@@ -1,3 +1,5 @@
+use std::error::Error; 
+
 //the main parser trait, its just a function that
 //takes an input and returns an option with an output
 //and a residual input so for example a parser which reads
@@ -8,7 +10,7 @@
 //like &str or &[u8] or &[something else], most of the cloning will just be a pointer
 
 pub trait Parser<I:Clone,O> {
-  type Error:std::fmt::Debug;
+  type Error:Error;
 
   fn parse(&self,input:I) -> Result<(O,I),Self::Error>;
 
@@ -38,7 +40,7 @@ pub trait Parser<I:Clone,O> {
     }
   }
 
-  fn map_err<E2:std::fmt::Debug,F:Fn(Self::Error) -> E2>(self,f:F) -> impl Parser<I,O,Error=E2> 
+  fn map_err<E2:Error,F:Fn(Self::Error) -> E2>(self,f:F) -> impl Parser<I,O,Error=E2> 
   where Self: std::marker::Sized
   {
     move |i|{
@@ -48,7 +50,7 @@ pub trait Parser<I:Clone,O> {
 
 }
 
-impl<I:Clone,O,E:std::fmt::Debug,F:Fn(I)->Result<(O,I),E>> Parser<I,O> for F {
+impl<I:Clone,O,E:Error,F:Fn(I)->Result<(O,I),E>> Parser<I,O> for F {
   type Error=E;
 
   fn parse(&self, txt:I) -> Result<(O,I),E> {
@@ -59,24 +61,24 @@ impl<I:Clone,O,E:std::fmt::Debug,F:Fn(I)->Result<(O,I),E>> Parser<I,O> for F {
 #[cfg(test)]
 mod tests {
   use super::*;
+  use crate::err::ErrorMsg;
 
-  fn guy(input: &str) -> Result<(&str,&str),&str> {
+  fn guy(input: &str) -> Result<(&str,&str),ErrorMsg> {
     match input {
-      "" => Err("it's bad"),
+      "" => Err("it's bad".into()),
       s => Ok((&s[0..1],&s[1..]))
     }
   }
 
-  fn fzer(input: &str) -> Result<usize,&str> {
+  fn fzer(input: &str) -> Result<usize,ErrorMsg>{
     match input {
-      "f" => Err("it's no good"),
+      "f" => Err("it's no good".into()),
       s => Ok(s.len())
     }
   }
 
   #[test]
   fn check_map() {
-    //check to see if mapping is good here
     let z = guy.map(|s|s.chars().next().unwrap() as u32);
     let (out,res) = z.parse("fishburns").expect("the parsing shouldn't fail");
     assert_eq!(102,out,"the parser should match the first letter and convert it to an int");

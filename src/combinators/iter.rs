@@ -1,4 +1,5 @@
 use crate::Parser;
+use std::error::Error;
 
 fn run_parser<I,O,P,S,CB>(txt:I,parser:&P,mut state:S,collect:&CB) -> Result<(S,I),P::Error> 
 where
@@ -72,7 +73,7 @@ pub mod vector {
   pub fn sep_list<I,O,O2,E,P,P2>(item:P,sep:P2) -> impl Parser<I,Vec<O>,Error=E> 
   where
     I:Clone,
-    E:std::fmt::Debug,
+    E:Error,
     P:Parser<I,O,Error=E>,
     P2:Parser<I,O2,Error=E>
   {
@@ -117,7 +118,7 @@ pub mod generic {
   pub fn sep_list<I,O,O2,E,P,P2,S,Ini,CB>(it:P,sp:P2,init:Ini,collect:CB) -> impl Parser<I,S> 
   where
     I:Clone,
-    E:std::fmt::Debug,
+    E:Error,
     P:Parser<I,O,Error=E>,
     P2:Parser<I,O2,Error=E>,
     Ini:Fn() -> S,
@@ -134,26 +135,27 @@ pub mod generic {
 #[cfg(test)]
 mod tests {
   use super::*;
+  use crate::err::ErrorMsg;
 
   //anything but a comma
-  fn guy(input: &str) -> Result<(&str,&str),&str> {
+  fn guy(input: &str) -> Result<(&str,&str),ErrorMsg> {
     match input {
-      "" => Err("it's over"),
-      s if s.starts_with(",") => Err("it's not good"),
+      "" => Err("it's over".into()),
+      s if s.starts_with(",") => Err("it's not good".into()),
       s => Ok((&s[0..1],&s[1..]))
     }
   }
 
-  fn bad_guy(input: &str) -> Result<(&str,&str),&str> {
+  fn bad_guy(input: &str) -> Result<(&str,&str),ErrorMsg> {
     match input{
-      "" => Err("it's over"),
-      s if s.starts_with("f") => Err("it's the bad one!"),
+      "" => Err("it's over".into()),
+      s if s.starts_with("f") => Err("it's the bad one!".into()),
       s => Ok((&s[0..1],&input[1..]))
     }
   }
 
-  fn comma(input: &str) -> Result<(&str,&str),&str> {
-    input.strip_prefix(",").map(|r|(",",r)).ok_or("it's no good")
+  fn comma(input: &str) -> Result<(&str,&str),ErrorMsg> {
+    input.strip_prefix(",").map(|r|(",",r)).ok_or("it's no good".into())
   }
 
   #[test]

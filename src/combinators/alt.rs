@@ -1,4 +1,5 @@
 use crate::parser::Parser;
+use crate::err::AltErr;
 // OK all the type signatures in here are really annoying to read
 // and that's cause of errors.
 // the issue is that I don't enforce a single parser error type
@@ -31,13 +32,13 @@ macro_rules! alt_parser_impl {
     impl<IN:Clone, $TG, $($MG),+ > Parser<IN,$TG> for Alt<IN,$TG,($($MG,)+)>
     where $($MG:Parser<IN,$TG>,)+
     {
-      type Error=();
+      type Error=AltErr;
 
-      fn parse(&self,txt:IN)->Result<($TG,IN),()> {
+      fn parse(&self,txt:IN)->Result<($TG,IN),AltErr> {
         let Alt{ ps:($($MG),+),.. } = self;
 
         $( if let Ok((v,r)) = $MG.parse(txt.clone()) { return Ok((v,r)); })+
-        Err(())
+        Err(AltErr{})
       }
     }
   }
@@ -64,32 +65,36 @@ pub fn alt<I,O,P:Into<Alt<I,O,P>>>(ps:P) -> Alt<I,O,P> {
 #[cfg(test)]
 mod tests {
   use super::*;
+  use crate::err::ErrorMsg;
 
   //some parsers
-  fn dog(inp:&str) -> Result<(&str,&str),&str> {
+  fn dog(inp:&str) -> Result<(&str,&str),ErrorMsg> {
     match &inp[0..3] {
       "dog" => Ok((&inp[0..3],&inp[3..])),
-      _ => Err("oh no it's all bad")  
+      _ => Err("oh no it's all bad".into())  
     }
   }
 
-  fn cat(inp:&str) -> Result<(&str,&str),&str> {
+  fn cat(inp:&str) -> Result<(&str,&str),ErrorMsg> {
     match &inp[0..3] {
       "cat" => Ok((&inp[0..3],&inp[3..])),
-      _ => Err("oh no its all bad")
+      _ => Err("oh no its all bad".into())
     }
   }
 
-  fn fish(inp:&str) -> Result<(&str,&str),&str> {
+  fn fish(inp:&str) -> Result<(&str,&str),ErrorMsg> {
     match &inp[0..4] {
       "fish" => Ok((&inp[0..4],&inp[4..])),
-      _ => Err("oh no its all bad")
+      _ => Err("oh no its all bad".into())
     }
   }
 
   #[test]
   fn test_alts() {
-    let z = alt((dog,cat,fish));
+    let z = alt((dog,cat,fish)).map_err(|_| -> ErrorMsg { 
+      "it needs to be a dog, a cat, or a fish".into() 
+    });
+
     let (out,res) = z.parse("dogzone").expect("the dog parser should succeed");
     assert_eq!("dog",out);
     assert_eq!("zone",res);
