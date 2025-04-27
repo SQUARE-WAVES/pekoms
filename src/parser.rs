@@ -1,3 +1,5 @@
+use std::error::Error; 
+
 //the main parser trait, its just a function that
 //takes an input and returns an option with an output
 //and a residual input so for example a parser which reads
@@ -8,7 +10,9 @@
 //like &str or &[u8] or &[something else], most of the cloning will just be a pointer
 
 pub trait Parser<I:Clone,O> {
-  fn parse(&self,input:I) -> Option<(O,I)>;
+  type Error:Error;
+
+  fn parse(&self,input:I) -> Result<(O,I),Self::Error>;
 
   //Output mods
   //these are handy functions that allow you to modify the output of an existing parser
@@ -16,7 +20,7 @@ pub trait Parser<I:Clone,O> {
   //just make a thunk which uses the result methods on the non-residual portion
   //of the output
   
-  fn map<O2,F:Fn(O)->O2>(self,f:F) -> impl Parser<I,O2> 
+  fn map<O2,F:Fn(O)->O2>(self,f:F) -> impl Parser<I,O2,Error=Self::Error> 
   where Self: std::marker::Sized
   {
     move |i|{
@@ -26,7 +30,7 @@ pub trait Parser<I:Clone,O> {
     }
   }
 
-  fn and_then<O2,F:Fn(O)->Option<O2>>(self,f:F) -> impl Parser<I,O2>
+  fn and_then<O2,F:Fn(O)->Result<O2,Self::Error>>(self,f:F) -> impl Parser<I,O2,Error=Self::Error>
   where Self: std::marker::Sized
   {
     move |i|{
@@ -36,10 +40,20 @@ pub trait Parser<I:Clone,O> {
     }
   }
 
+  fn map_err<E2:Error,F:Fn(Self::Error) -> E2>(self,f:F) -> impl Parser<I,O,Error=E2> 
+  where Self: std::marker::Sized
+  {
+    move |i|{
+      self.parse(i).map_err(&f)
+    }
+  }
+
 }
 
-impl<I:Clone,O,F:Fn(I)->Option<(O,I)>> Parser<I,O> for F {
-  fn parse(&self, txt:I) -> Option<(O,I)> {
+impl<I:Clone,O,E:Error,F:Fn(I)->Result<(O,I),E>> Parser<I,O> for F {
+  type Error=E;
+
+  fn parse(&self, txt:I) -> Result<(O,I),E> {
     self(txt)
   }
 }
@@ -47,24 +61,24 @@ impl<I:Clone,O,F:Fn(I)->Option<(O,I)>> Parser<I,O> for F {
 #[cfg(test)]
 mod tests {
   use super::*;
+  use crate::err::ErrorMsg;
 
-  fn guy(input: &str) -> Option<(&str,&str)> {
+  fn guy(input: &str) -> Result<(&str,&str),ErrorMsg> {
     match input {
-      "" => None,
-      s => Some((&s[0..1],&s[1..]))
+      "" => Err("it's bad".into()),
+      s => Ok((&s[0..1],&s[1..]))
     }
   }
 
-  fn fzer(input: &str) -> Option<usize> {
+  fn fzer(input: &str) -> Result<usize,ErrorMsg>{
     match input {
-      "f" => None,
-      s => Some(s.len())
+      "f" => Err("it's no good".into()),
+      s => Ok(s.len())
     }
   }
 
   #[test]
   fn check_map() {
-    //check to see if mapping is good here
     let z = guy.map(|s|s.chars().next().unwrap() as u32);
     let (out,res) = z.parse("fishburns").expect("the parsing shouldn't fail");
     assert_eq!(102,out,"the parser should match the first letter and convert it to an int");
@@ -79,6 +93,6 @@ mod tests {
     assert_eq!("ibbles",res,"the rest of the string should be the residual");
 
     let bad = z.parse("fish");
-    assert!(bad.is_none(),"the word fish should fail to parse");
+    assert!(bad.is_err(),"the word fish should fail to parse");
   }
 }

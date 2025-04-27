@@ -2,13 +2,16 @@ use pekoms::{
   Parser,
   alt::alt,
   iter,
-  basics::optional
+  basics::optional,
+  ErrorMsg
 };
 
-mod str_parsers;
-use str_parsers::*;
+mod parsers;
+use parsers::strn::*;
 
-
+//since I just print the values here,
+//it gives you a dead code warning
+#[allow(dead_code)]
 #[derive(Debug)]
 enum Element<'a> {
   Number(i64),
@@ -17,23 +20,36 @@ enum Element<'a> {
   Expr(&'a str,Vec<Element<'a>>)
 }
 
-fn num(input:&str) -> Option<(Element,&str)> {
-  int.and_then(|out|out.parse::<i64>().ok().map(Element::Number)).parse(input)
+fn num(input:&str) -> Result<(Element,&str),ErrorMsg> {
+  int(input).and_then( |(out,res)| {
+    out.parse::<i64>()
+    .map(|n|(Element::Number(n),res))
+    .map_err(|_|"not a number".into()) 
+  })
 }
 
-fn sym(input:&str) -> Option<(Element,&str)> {
-  lower_w.map(Element::Symbol).parse(input)
+fn sym(input:&str) -> Result<(Element,&str),ErrorMsg> {
+  lower_w(input).map(|(s,res)|(Element::Symbol(s),res))
 }
 
-fn txt(input:&str) -> Option<(Element,&str)> {
-  quoted.map(Element::Text).parse(input)
+fn txt(input:&str) -> Result<(Element,&str),ErrorMsg> {
+  quoted(input).map(|(s,res)|(Element::Text(s),res))
 }
 
-fn expr(input:&str) -> Option<(Element,&str)> {
+fn expr(input:&str) -> Result<(Element,&str),ErrorMsg> {
   use iter::vector::sep_list;
 
-  let elem = alt((num,sym,txt,expr));
-  let seq = (pfx("("),optional(ws),lower_w,optional(ws),sep_list(elem,ws),optional(ws),pfx(")"));
+  let elem = alt((num,sym,txt,expr)).map_err(|_|"not a number,symbol,string or s-expr".into());
+
+  let seq = (
+    pfx("("),
+    optional(ws), 
+    lower_w, 
+    optional(ws), 
+    sep_list(elem,ws), 
+    optional(ws), 
+    pfx(")")
+  );
 
   seq.map(|(_,_,s,_,elems,_,_)|Element::Expr(s,elems)).parse(input)
 }
@@ -41,4 +57,7 @@ fn expr(input:&str) -> Option<(Element,&str)> {
 fn main() {
   let out = expr("(dogs (hogs 15)  (     logs  \"the entire constitution here\" )     )");
   println!("{:?}",out);
+
+  let bad = expr("fish (bats 34) igbort");
+  println!("{:?}",bad);
 }

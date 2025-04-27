@@ -1,22 +1,25 @@
-use pekoms::Parser;
+use pekoms::{
+  Parser,
+  ErrorMsg
+};
 
-mod bin_parsers;
+mod parsers;
 
 const RIFF_HEADER : &[u8] = &[0x52, 0x49, 0x46, 0x46];
 const WAVE_HEADER : &[u8] = &[0x57, 0x41, 0x56, 0x45];
 const FMT_HEADER : &[u8] = &[0x66, 0x6D, 0x74, 0x20];
 const DATA_HEADER : &[u8] = &[0x64, 0x61, 0x74, 0x61];
 
-
-fn chunk(header:&'static [u8]) -> impl Fn(&[u8]) -> Option<(&[u8],&[u8])> {
+fn chunk(header:&'static [u8]) -> impl Fn(&[u8]) -> Result<(&[u8],&[u8]),ErrorMsg> {
   |input| {
     input.strip_prefix(header)
-    .and_then(|r| bin_parsers::u32(r))
-    .and_then(|(sz,r)|bin_parsers::fixed_len(sz as usize).parse(r))
+    .ok_or("couldn't find chunk".into())
+    .and_then(|r| parsers::bin::u32(r))
+    .and_then(|(sz,r)|parsers::bin::fixed_len(sz as usize).parse(r))
   }
 }
 
-fn riff_chunk(input:&[u8]) -> Option<(&[u8],&[u8])> {
+fn riff_chunk(input:&[u8]) -> Result<(&[u8],&[u8]),ErrorMsg> {
   chunk(RIFF_HEADER).parse(input)
 }
 
@@ -47,8 +50,8 @@ impl From<(u16,u16,u32,u32,u16,u16)> for WavInfo {
 //a tuple with an info struct and the data bytes.
 type WavData<'a> = (WavInfo,&'a[u8]);
 
-fn fmt_chunk(input:&[u8]) -> Option<(WavInfo,&[u8])> {
-  use bin_parsers::{
+fn fmt_chunk(input:&[u8]) -> Result<(WavInfo,&[u8]),ErrorMsg> {
+  use parsers::bin::{
     u16_le,
     u32_le
   };
@@ -61,16 +64,16 @@ fn fmt_chunk(input:&[u8]) -> Option<(WavInfo,&[u8])> {
   .parse(input)
 }
 
-fn data_chunk(input:&[u8]) -> Option<(&[u8],&[u8])> {
+fn data_chunk(input:&[u8]) -> Result<(&[u8],&[u8]),ErrorMsg> {
   chunk(DATA_HEADER).parse(input)
 }
 
-fn wave_chunk(input:&[u8]) -> Option<(WavInfo,&[u8])> {
-  let seq = (bin_parsers::pfx(WAVE_HEADER),fmt_chunk,data_chunk);
+fn wave_chunk(input:&[u8]) -> Result<(WavInfo,&[u8]),ErrorMsg> {
+  let seq = (parsers::bin::pfx(WAVE_HEADER),fmt_chunk,data_chunk);
   seq.map(|(_,fmt,data)|(fmt,data)).parse(input).map(|((f,d),_r)|(f,d))
 }
 
-fn parse_wav(input:&[u8]) -> Option<(WavData,&[u8])> {
+fn parse_wav(input:&[u8]) -> Result<(WavData,&[u8]),ErrorMsg> {
   riff_chunk.and_then(wave_chunk).parse(input)
 }
 
@@ -88,13 +91,13 @@ fn get_wav() -> Vec<u8> {
 fn main() {
   let buff = get_wav();
   
-  if let Some(((nfo,data),rest)) = parse_wav(&buff[..]) {
-    println!("wow it worked");
-    println!("wave nfo {:?}",nfo);
-    println!("how much data?: {} bytes",data.len());
-    println!("anything left over? {:?}",rest);
-  }
-  else {
-    println!("it didn't work");
+  match parse_wav(&buff[..]) {
+    Ok(((nfo,data),rest)) => {
+      println!("wow it worked");
+      println!("wave nfo {:?}",nfo);
+      println!("how much data?: {} bytes",data.len());
+      println!("anything left over? {:?}",rest);
+    },
+    Err(code) => println!("it didn't work, here is an unhelpful code {}",code)
   }
 }

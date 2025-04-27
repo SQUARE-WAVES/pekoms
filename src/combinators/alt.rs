@@ -1,4 +1,5 @@
 use crate::parser::Parser;
+use crate::err::AltErr;
 // OK all the type signatures in here are really annoying to read
 // and that's cause of errors.
 // the issue is that I don't enforce a single parser error type
@@ -31,11 +32,13 @@ macro_rules! alt_parser_impl {
     impl<IN:Clone, $TG, $($MG),+ > Parser<IN,$TG> for Alt<IN,$TG,($($MG,)+)>
     where $($MG:Parser<IN,$TG>,)+
     {
-      fn parse(&self,txt:IN)->Option<($TG,IN)> {
+      type Error=AltErr;
+
+      fn parse(&self,txt:IN)->Result<($TG,IN),AltErr> {
         let Alt{ ps:($($MG),+),.. } = self;
 
-        $( if let Some((v,r)) = $MG.parse(txt.clone()) { return Some((v,r)); })+
-        None
+        $( if let Ok((v,r)) = $MG.parse(txt.clone()) { return Ok((v,r)); })+
+        Err(AltErr{})
       }
     }
   }
@@ -62,32 +65,36 @@ pub fn alt<I,O,P:Into<Alt<I,O,P>>>(ps:P) -> Alt<I,O,P> {
 #[cfg(test)]
 mod tests {
   use super::*;
+  use crate::err::ErrorMsg;
 
   //some parsers
-  fn dog(inp:&str) -> Option<(&str,&str)> {
+  fn dog(inp:&str) -> Result<(&str,&str),ErrorMsg> {
     match &inp[0..3] {
-      "dog" => Some((&inp[0..3],&inp[3..])),
-      _ => None    
+      "dog" => Ok((&inp[0..3],&inp[3..])),
+      _ => Err("oh no it's all bad".into())  
     }
   }
 
-  fn cat(inp:&str) -> Option<(&str,&str)> {
+  fn cat(inp:&str) -> Result<(&str,&str),ErrorMsg> {
     match &inp[0..3] {
-      "cat" => Some((&inp[0..3],&inp[3..])),
-      _ => None
+      "cat" => Ok((&inp[0..3],&inp[3..])),
+      _ => Err("oh no its all bad".into())
     }
   }
 
-  fn fish(inp:&str) -> Option<(&str,&str)> {
+  fn fish(inp:&str) -> Result<(&str,&str),ErrorMsg> {
     match &inp[0..4] {
-      "fish" => Some((&inp[0..4],&inp[4..])),
-      _ => None
+      "fish" => Ok((&inp[0..4],&inp[4..])),
+      _ => Err("oh no its all bad".into())
     }
   }
 
   #[test]
   fn test_alts() {
-    let z = alt((dog,cat,fish));
+    let z = alt((dog,cat,fish)).map_err(|_| -> ErrorMsg { 
+      "it needs to be a dog, a cat, or a fish".into() 
+    });
+
     let (out,res) = z.parse("dogzone").expect("the dog parser should succeed");
     assert_eq!("dog",out);
     assert_eq!("zone",res);
@@ -101,6 +108,6 @@ mod tests {
     assert_eq!("seldorf",res);
 
     let bad = z.parse("if you can't hang with the big dog, get off the porch");
-    assert!(bad.is_none());
+    assert!(bad.is_err());
   }
 }

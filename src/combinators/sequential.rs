@@ -1,4 +1,6 @@
 use crate::parser::Parser;
+
+use std::error::Error;
 /*=============================================================================
 This macro implemnts the parser trait for tuples of parsers, and makes them run in sequence,
 so for example if you have the parser "word" which matches a bunch of letters
@@ -9,13 +11,15 @@ macro_rules! sequential_parser_impl{
   ($($TypGen:ident $MchGen:ident),+) => {
     //since the generic types names aren't snake cased you need this to avoid a million warnings
     #[allow(non_snake_case)]
-    impl<Inp:Clone, $($TypGen),+, $($MchGen),+> Parser<Inp,($($TypGen),+)> for ($($MchGen,)+)
-    where $($MchGen:Parser<Inp,$TypGen>,)+
+    impl<Inp:Clone, Er:Error, $($TypGen),+, $($MchGen),+> Parser<Inp,($($TypGen),+)> for ($($MchGen,)+)
+    where $($MchGen:Parser<Inp,$TypGen,Error=Er>,)+
     {
-      fn parse(&self,txt:Inp)->Option<(($($TypGen),+),Inp)> {
+      type Error= Er;
+
+      fn parse(&self,txt:Inp)->Result<(($($TypGen),+),Inp),Self::Error> {
         let ($($MchGen),+) = self;
         $(let ($TypGen,txt) = $MchGen.parse(txt)?;)+
-        Some((($($TypGen),+),txt))
+        Ok((($($TypGen),+),txt))
       }
     }
   }
@@ -39,17 +43,18 @@ sequential_parser_impl!(At A,Bt B,Ct C,Dt D,Et E, Ft F, Gt G, Ht H, It I, Jt J, 
 mod tests
 {
   use super::*;
+  use crate::err::ErrorMsg;
 
-  fn dot(inp:&str) -> Option<(&str,&str)> {
-    inp.strip_prefix(".").map(|r|(".",r))
+  fn dot(inp:&str) -> Result<(&str,&str),ErrorMsg> {
+    inp.strip_prefix(".").map(|r|(".",r)).ok_or("its bad".into())
   }
 
-  fn dash(inp:&str) -> Option<(&str,&str)> {
-    inp.strip_prefix("-").map(|r|("-",r))
+  fn dash(inp:&str) -> Result<(&str,&str),ErrorMsg> {
+    inp.strip_prefix("-").map(|r|("-",r)).ok_or("its bad".into())
   }
 
-  fn space(inp:&str) -> Option<(&str,&str)> {
-    inp.strip_prefix(" ").map(|r|(" ",r))
+  fn space(inp:&str) -> Result<(&str,&str),ErrorMsg> {
+    inp.strip_prefix(" ").map(|r|(" ",r)).ok_or("its bad".into())
   }
 
   #[test]
@@ -63,24 +68,24 @@ mod tests
     assert_eq!("",res);
 
     let bad = morse_s.parse("..F.");
-    assert!(bad.is_none(),"the s parser should fail if there is another letter in there");
+    assert!(bad.is_err(),"the s parser should fail if there is another letter in there");
 
 
     let bad = morse_s.parse("..");
-    assert!(bad.is_none(),"a sequential parser should fail if there isn't enough input");
+    assert!(bad.is_err(),"a sequential parser should fail if there isn't enough input");
 
     let (out,res) = morse_o.parse("--- HEY!").expect("O shouldn't fail to parse");
     assert_eq!(("-","-","-"),out);
     assert_eq!(" HEY!",res);
     
     let bad = morse_o.parse(".---");
-    assert!(bad.is_none());
+    assert!(bad.is_err());
 
     let (out,res) = morse_sos.parse("... --- ...").expect("SOS shouldn't fail to parse");
     assert_eq!(((".",".",".")," ",("-","-","-")," ",(".",".",".")),out);
     assert_eq!("",res);
 
     let bad = morse_sos.parse("...---...");
-    assert!(bad.is_none());
+    assert!(bad.is_err());
   }
 }
