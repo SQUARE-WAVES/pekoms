@@ -55,7 +55,7 @@ fn expr(input:&str) -> Result<(Element,&str),ErrorMsg> {
 }
 
 fn main() {
-  let out = expr("(dogs (hogs 15)  (     logs  \"the entire constitution here\" )     )");
+  let out = expr("(dogs (hogs 15)  (     logs  \"the entire constitution here\")     )");
   println!("{:?}",out);
 
   let bad = expr("fish (bats 34) igbort");
