@@ -92,9 +92,9 @@ pub fn end(input:&str) -> Result<(&str,&str),ErrorMsg> {
   }
 }
 
-pub fn pfx(word: &'static str) -> impl Fn(&str)->Result<(&str,&str),ErrorMsg> {
+pub const fn pfx(word: &'static str) -> impl Fn(&str)->Result<(&str,&str),ErrorMsg> {
   move |inp| {
-    inp.strip_prefix(word)
+    inp.strip_prefix(word) 
     .map(|rest|(word,rest))
     .ok_or("wrong prefix".into())
   }
@@ -104,9 +104,8 @@ pub fn quoted(input:&str) -> Result<(&str,&str),ErrorMsg> {
   input.strip_prefix("\"")
   .ok_or("no start quote".into())
   .and_then(|rest|{
-    rest.char_indices().take_while(|(_i,c)|*c != '"').last()
-    .and_then(|(i,c)| if c != '"' { None } else { Some((i,c)) })
+    rest.char_indices().find(|(_i,c)|*c == '"')
     .ok_or("no end quote".into()) 
-    .map(|(i,_c)|(&rest[0..(i+1)],&rest[(i+2)..]))
+    .map(|(i,_c)|rest.split_at(i+1)) //this i+1 is safe because we know " is len 1
   })
 }

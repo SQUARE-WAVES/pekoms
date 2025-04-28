@@ -3,7 +3,7 @@ use std::convert::TryInto;
 
 type BinMatch<'a,'b> = (&'a[u8],&'b[u8]);
 
-pub fn fixed_len(len:usize) -> impl Fn(&[u8]) -> Result<BinMatch,ErrorMsg> {
+pub const fn fixed_len(len:usize) -> impl Fn(&[u8]) -> Result<BinMatch,ErrorMsg> {
   move |input|{
     if input.len() >= len {
       Ok((&input[0..len],&input[len..]))
@@ -14,7 +14,7 @@ pub fn fixed_len(len:usize) -> impl Fn(&[u8]) -> Result<BinMatch,ErrorMsg> {
   }
 }
 
-pub fn pfx(p:&'static [u8]) -> impl Fn(&[u8]) -> Result<BinMatch,ErrorMsg> {
+pub const fn pfx(p:&'static [u8]) -> impl Fn(&[u8]) -> Result<BinMatch,ErrorMsg> {
   move |input| {
     input.strip_prefix(p).map(|r|(p,r)).ok_or("prefix not found".into())
   }
