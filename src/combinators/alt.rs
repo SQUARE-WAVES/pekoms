@@ -15,6 +15,12 @@ pub struct Alt<I,O,P> {
   _ghost:std::marker::PhantomData<(I,O)>
 }
 
+impl<I,O,P> Alt<I,O,P> {
+  pub const fn new(ps:P) -> Self {
+    Self{ps,_ghost:std::marker::PhantomData }
+  }
+}
+
 macro_rules! alt_parser_impl {
   ($TG:ident, $($MG:ident),+) => {
     impl<IN:Clone, $TG, $($MG),+> From<($($MG),+)> for Alt<IN,$TG,($($MG,)+)> 
@@ -58,8 +64,10 @@ alt_parser_impl!(Typ, A,B,C,D,E,F,G,H,I,J,K,L);
 alt_parser_impl!(Typ, A,B,C,D,E,F,G,H,I,J,K,L,M);
 
 //this is a convenience method to make constructing an alt easier
-pub fn alt<I,O,P:Into<Alt<I,O,P>>>(ps:P) -> Alt<I,O,P> {
-  ps.into()
+// the into trait ends up just being kinda helpful as it's safer to
+// use the const new
+pub const fn alt<I,O,P:Into<Alt<I,O,P>>>(ps:P) -> Alt<I,O,P> {
+  Alt::new(ps)
 }
 
 #[cfg(test)]

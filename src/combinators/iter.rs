@@ -53,7 +53,7 @@ where
 pub mod vector {
   use super::*;
 
-  pub fn star<I:Clone,O,P:Parser<I,O>>(parser:P) -> impl Parser<I,Vec<O>> {
+  pub const fn star<I:Clone,O,P:Parser<I,O>>(parser:P) -> impl Parser<I,Vec<O>> {
     move |txt:I| {
       let outs : Vec<O> = vec![];
       let collect = |st:&mut Vec<O>,val:O|st.push(val);
@@ -61,7 +61,7 @@ pub mod vector {
     }
   }
   
-  pub fn plus<I:Clone,O,P:Parser<I,O>>(parser:P) -> impl Parser<I,Vec<O>> {
+  pub const fn plus<I:Clone,O,P:Parser<I,O>>(parser:P) -> impl Parser<I,Vec<O>> {
     move |txt:I| {
       let (init_val,init_resid) = parser.parse(txt)?;
       let outs : Vec<O> = vec![init_val];
@@ -70,7 +70,7 @@ pub mod vector {
     }
   }
 
-  pub fn sep_list<I,O,O2,E,P,P2>(item:P,sep:P2) -> impl Parser<I,Vec<O>,Error=E> 
+  pub const fn sep_list<I,O,O2,E,P,P2>(item:P,sep:P2) -> impl Parser<I,Vec<O>,Error=E> 
   where
     I:Clone,
     E:Error,
@@ -88,7 +88,7 @@ pub mod vector {
 pub mod generic {
   use super::*;
 
-  pub fn star<I,O,P,S,Init,CB>(parser:P,init:Init,collect:CB) -> impl Parser<I,S> 
+  pub const fn star<I,O,P,S,Init,CB>(parser:P,init:Init,collect:CB) -> impl Parser<I,S> 
   where
     I:Clone,
     P:Parser<I,O>,
@@ -101,7 +101,7 @@ pub mod generic {
     }
   }
 
-  pub fn plus<I,O,P,S,Init,CB>(parser:P,init:Init,collect:CB) -> impl Parser<I,S> 
+  pub const fn plus<I,O,P,S,Init,CB>(parser:P,init:Init,collect:CB) -> impl Parser<I,S> 
   where
     I:Clone,
     P:Parser<I,O>,
@@ -115,7 +115,7 @@ pub mod generic {
     }
   }
 
-  pub fn sep_list<I,O,O2,E,P,P2,S,Ini,CB>(it:P,sp:P2,init:Ini,collect:CB) -> impl Parser<I,S> 
+  pub const fn sep_list<I,O,O2,E,P,P2,S,Ini,CB>(it:P,sp:P2,init:Ini,collect:CB) -> impl Parser<I,S> 
   where
     I:Clone,
     E:Error,
