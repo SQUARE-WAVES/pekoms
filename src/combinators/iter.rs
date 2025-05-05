@@ -53,7 +53,7 @@ where
 pub mod vector {
   use super::*;
 
-  pub const fn star<I:Clone,O,P:Parser<I,O>>(parser:P) -> impl Parser<I,Vec<O>> {
+  pub const fn star<I:Clone,O,P:Parser<I,O>>(parser:P) -> impl Parser<I,Vec<O>,Error=P::Error> {
     move |txt:I| {
       let outs : Vec<O> = vec![];
       let collect = |st:&mut Vec<O>,val:O|st.push(val);
@@ -61,7 +61,7 @@ pub mod vector {
     }
   }
   
-  pub const fn plus<I:Clone,O,P:Parser<I,O>>(parser:P) -> impl Parser<I,Vec<O>> {
+  pub const fn plus<I:Clone,O,P:Parser<I,O>>(parser:P) -> impl Parser<I,Vec<O>,Error=P::Error> {
     move |txt:I| {
       let (init_val,init_resid) = parser.parse(txt)?;
       let outs : Vec<O> = vec![init_val];
@@ -83,6 +83,28 @@ pub mod vector {
       run_wheel(txt,&item,&sep,outs,&collect)
     }
   }
+
+  //this is a sep list with a minimum of one match!
+  pub const fn sep_list_plus<I,O,O2,E,P,P2>(item:P,sep:P2) -> impl Parser<I,Vec<O>,Error=E> 
+  where
+    I:Clone,
+    E:Error,
+    P:Parser<I,O,Error=E>,
+    P2:Parser<I,O2,Error=E>
+  {
+    move |txt:I| {
+      let (init,rest) = item.parse(txt)?;
+      
+      let rest = match sep.parse(rest.clone()) {
+        Ok((_,remains)) => remains,
+        Err(_) => return Ok((vec![init],rest))
+      };
+
+      let outs : Vec<O> = vec![init];
+      let collect = |st:&mut Vec<O>,val:O|st.push(val);
+      run_wheel(rest,&item,&sep,outs,&collect)
+    }
+  }
 }
 
 pub mod generic {
@@ -101,7 +123,7 @@ pub mod generic {
     }
   }
 
-  pub const fn plus<I,O,P,S,Init,CB>(parser:P,init:Init,collect:CB) -> impl Parser<I,S> 
+  pub const fn plus<I,O,P,S,Init,CB>(p:P,i:Init,c:CB) -> impl Parser<I,S,Error=P::Error> 
   where
     I:Clone,
     P:Parser<I,O>,
@@ -109,9 +131,9 @@ pub mod generic {
     CB:Fn(&mut S,O)
   {
     move |txt:I| {
-      let (init_v,init_res) = parser.parse(txt)?;
-      let outs = init(init_v);
-      run_parser(init_res,&parser,outs,&collect)
+      let (init_v,init_res) = p.parse(txt)?;
+      let outs = i(init_v);
+      run_parser(init_res,&p,outs,&c)
     }
   }
 
@@ -127,6 +149,28 @@ pub mod generic {
     move |txt:I| {
       let outs = init();
       run_wheel(txt,&it,&sp,outs,&collect)
+    }
+  }
+
+  pub const fn sep_list_plus<I,O,O2,E,P,P2,S,Ini,CB>(it:P,sp:P2,init:Ini,collect:CB) -> impl Parser<I,S> 
+  where
+    I:Clone,
+    E:Error,
+    P:Parser<I,O,Error=E>,
+    P2:Parser<I,O2,Error=E>,
+    Ini:Fn(O) -> S,
+    CB:Fn(&mut S,O)
+  {
+    move |txt:I| {
+      let (first,rest) = it.parse(txt)?;
+      
+      let rest = match sp.parse(rest.clone()) {
+        Ok((_,remains)) => remains,
+        Err(_) => return Ok((init(first),rest))
+      };
+
+      let outs = init(first);
+      run_wheel(rest,&it,&sp,outs,&collect)
     }
   }
 }
@@ -169,7 +213,6 @@ mod tests {
     let z = vector::star(bad_guy);
 
     let (out,res) = z.parse("dangfish").expect("it should go!");
-    println!("!!!!! out:{:?}, res:{}",out,res);
     assert_eq!(vec!["d","a","n","g"],out,"the short parse should go right");
     assert_eq!("fish",res,"some input should remain");
   }
@@ -200,6 +243,23 @@ mod tests {
   }
 
   #[test]
+  fn check_sep_list_plus_vec() {
+    let z = vector::sep_list_plus(guy,comma);
+
+    let _bad = z.parse(",f,i,s,h").expect_err("rudy should fail!");
+
+    let (out,res) = z.parse("s,t,a,b,s").expect("it should go!");
+    assert_eq!(vec!["s","t","a","b","s"],out,"the non-fish parse should go right");
+    assert_eq!("",res,"the input should all get used up");
+
+
+    //this should match just one item with no separator
+    let (out,res) = z.parse("s ffff").expect("it should go!");
+    assert_eq!(vec!["s"],out);
+    assert_eq!(" ffff",res);
+  }
+
+  #[test]
   fn check_star_generic() {
     let start = ||String::new();
     let collect = |st:&mut String,letter|st.push_str(letter);
@@ -212,7 +272,6 @@ mod tests {
     let z = generic::star(bad_guy,&start,&collect);
 
     let (out,res) = z.parse("dangfish").expect("it should go!");
-    println!("!!!!! out:{:?}, res:{}",out,res);
     assert_eq!("dang",out,"the short parse should go right");
     assert_eq!("fish",res,"some input should remain");
   }
@@ -230,7 +289,6 @@ mod tests {
     let z = generic::plus(bad_guy,&start,&collect);
 
     let (out,res) = z.parse("dangfish").expect("it should go!");
-    println!("!!!!! out:{:?}, res:{}",out,res);
     assert_eq!("dang",out,"the short parse should go right");
     assert_eq!("fish",res,"some input should remain");
   }
@@ -249,6 +307,24 @@ mod tests {
     let (out,res) = z.parse("s,t,a,b,s").expect("it should go!");
     assert_eq!("stabs",out,"the non-fish parse should go right");
     assert_eq!("",res,"the input should all get used up");
+  }
+
+  #[test]
+  fn check_sep_list_plus_generic() {
+    let start = |s|String::from(s);
+    let collect = |st:&mut String,letter|st.push_str(letter);
+
+    let z = generic::sep_list_plus(guy,comma,&start,&collect);
+
+    let _bad = z.parse(",f,i,s,h").expect_err("rudy should fail");
+
+    let (out,res) = z.parse("s,t,a,b,s").expect("it should go!");
+    assert_eq!("stabs",out,"the non-fish parse should go right");
+    assert_eq!("",res,"the input should all get used up");
+
+    let (out,res) = z.parse("f asdf").expect("it should go!");
+    assert_eq!("f",out);
+    assert_eq!(" asdf",res);
   }
 }
 

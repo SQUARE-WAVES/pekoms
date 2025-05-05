@@ -24,14 +24,15 @@ I think I could do something like what [nom](https://github.com/rust-bakery/nom)
 parsers, but I'm not sure what I want yet.
 
 
-## streams and other types of input
+## streams, iterators and other types of input
 
 right now there isn't anything specific to prevent you from using a stream to parse stuff, except that the library probably
-won't play well with std::io. The issue is that it expects your input type to be immutable, so it can backtrack, however
-std::io::Read work that way, it changes it's position every time you read more data. Now if you also have std::io::Seek you can
-backtrack, but it's an operation to do so.
+won't play well with things like std::iter::Iterator or std::io. The issue is that it expects your input type to be immutable
+so it can backtrack, however iters and streams don't work that way, walking through them mutates them. With a lot of iters it's no
+big deal you just clone them a bunch, but if you were for example using a lexer from something like [logos](https://github.com/maciejhirsz/logos)
+your cloned iterator would re-do a lot of work lexing stuff.
 
-It's almost certainly possible to make an efficient wrapper, that uses a pointer to a buffer and a std::io::Read type, where
+It's almost certainly possible to make an efficient wrapper, that uses a pointer to a buffer and an iterator or stream type, where
 you create a new value each time you read further, maybe you can do this with all the cursor stuff in std::io, I don't know
 yet. If I end up having a problem where I want to do this kinda thing. I'll figure out a way to handle this but for now I'm not
 really that concerned about it.

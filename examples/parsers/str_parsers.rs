@@ -13,6 +13,41 @@ pub fn lower_w(input:&str) -> Result<(&str,&str),ErrorMsg> {
   }
 }
 
+pub fn word(input:&str) -> Result<(&str,&str),ErrorMsg> {
+  //first thing needs to be a letter
+  input.chars().next().and_then(|c|{
+    if c.is_ascii_alphabetic() {
+      Some(())
+    }
+    else {
+      None
+    }
+  })
+  .ok_or("expected first char to be a letter")?;
+
+  let finale = input.char_indices().find(|(_i,c)|{
+    !(c.is_ascii_alphanumeric() || *c == '_')
+  });
+
+  match finale {
+    Some((i,_c)) => Ok(input.split_at(i)),
+    None => Ok((input,""))
+  }
+}
+
+pub fn alphanum(input:&str) -> Result<(&str,&str),ErrorMsg> {
+  let split_point = input.char_indices().find(|(_,c)|!c.is_alphanumeric())
+  .map(|(i,_)|i)
+  .unwrap_or(input.len());
+
+  if split_point == 0 {
+    Err("expected alphanumeric character".into())
+  }
+  else {
+    Ok(input.split_at(split_point))
+  }
+}
+
 pub fn digits(input:&str) -> Result<(&str,&str),ErrorMsg> {
   let cs = input.chars();
   let l = cs.take_while(|c|c.is_ascii_digit()).count();
@@ -22,6 +57,20 @@ pub fn digits(input:&str) -> Result<(&str,&str),ErrorMsg> {
   else {
     Ok((&input[0..l],&input[l..]))
   }
+}
+
+pub fn digit(input:&str) -> Result<(&str,&str),ErrorMsg> {
+  input.chars().next()
+  .and_then(|c|{
+    if c.is_ascii_digit() {
+      let len = c.len_utf8();
+      Some(input.split_at(len))
+    }
+    else {
+      None
+    }
+  })
+  .ok_or("not a digit".into())
 }
 
 pub fn decimal_digits(input:&str) -> Result<(&str,&str),ErrorMsg>  {
@@ -68,7 +117,9 @@ pub fn ws(input:&str) -> Result<(usize,&str),ErrorMsg> {
     Err("not whitespace".into())
   }
   else {
-    Ok((l,&input[l..]))
+    //todo::fix this up to use char indices,
+    //this is only safe-ish cause we know ascii whitespace is one letter
+    Ok((l,&input[l..])) 
   }
 }
 
@@ -96,7 +147,21 @@ pub const fn pfx(word: &'static str) -> impl Fn(&str)->Result<(&str,&str),ErrorM
   move |inp| {
     inp.strip_prefix(word) 
     .map(|rest|(word,rest))
-    .ok_or("wrong prefix".into())
+    .ok_or(word.into())
+  }
+}
+
+//this is the slow way of doing this, it's fine for small char_sets though:
+pub const fn one_of(char_set:&'static str) -> impl Fn(&str)->Result<(char,&str),ErrorMsg> {
+  move |inp| {
+    let c : char = inp.chars().next().ok_or(ErrorMsg::from("unexpected empty string"))?;
+    
+    if char_set.contains(c) {
+      Ok((c,&inp[c.len_utf8()..])) //you gotta be careful slicing &str
+    }
+    else {
+      Err("its bad".into())
+    }
   }
 }
 
