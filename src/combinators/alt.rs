@@ -1,15 +1,15 @@
 use crate::parser::Parser;
 use crate::err::AltErr;
-// OK all the type signatures in here are really annoying to read
-// and that's cause of errors.
-// the issue is that I don't enforce a single parser error type
-// so if you want an alternative selection from multiple parsers
-// it's type has to include all the different error types
-// now I guess I could make it easier by forcing you to have the same error
-// just like I force you to have the same return type, but I don't want to do
-// that cause that's annoying. It's much easier to make returns conform via
-// map and such like
+//this is a vehicle to implement the parser trait
+//I'm already using tuples to handle sequential
+//parsing.
 
+//it's important to remember that order matters with this
+//in the case of an ambiguous parse the first one that matches
+//will always win, so for example if you were trying to parse
+//something where you can match either "alf" as a keyword
+//or just any random word, you have to try "alf" as a keyword
+//first!
 pub struct Alt<I,O,P> {
   ps:P,
   _ghost:std::marker::PhantomData<(I,O)>
@@ -38,13 +38,13 @@ macro_rules! alt_parser_impl {
     impl<IN:Clone, $TG, $($MG),+ > Parser<IN,$TG> for Alt<IN,$TG,($($MG,)+)>
     where $($MG:Parser<IN,$TG>,)+
     {
-      type Error=AltErr;
+      type Error=AltErr<IN>;
 
-      fn parse(&self,txt:IN)->Result<($TG,IN),AltErr> {
+      fn parse(&self,txt:IN)->Result<($TG,IN),AltErr<IN>> {
         let Alt{ ps:($($MG),+),.. } = self;
 
         $( if let Ok((v,r)) = $MG.parse(txt.clone()) { return Ok((v,r)); })+
-        Err(AltErr{})
+        Err(txt.into())
       }
     }
   }

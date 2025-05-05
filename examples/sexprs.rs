@@ -58,6 +58,7 @@ fn main() {
   let out = expr("(dogs (hogs 15)  (     logs  \"the entire constitution here\")     )");
   println!("{:?}",out);
 
+  println!("This one should error out!");
   let bad = expr("fish (bats 34) igbort");
   println!("{:?}",bad);
 }
