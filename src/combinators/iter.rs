@@ -1,6 +1,7 @@
 use std::error::Error;
 
 use crate::Parser;
+use crate::basics::optional;
 
 pub struct ParseIter<'a,I,O,P> {
   parser:&'a P,
@@ -41,14 +42,13 @@ where
       _ghost:std::marker::PhantomData
     }
   }
-
+ 
   pub fn remains(self) -> I {
     self.input
   }
 }
 
 pub mod vector {
-  use crate::basics::optional;
   use super::*;
 
   pub const fn star<I:Clone,O,P:Parser<I,O>>(parser:P) -> impl Parser<I,Vec<O>,Error=P::Error> {
@@ -113,6 +113,7 @@ pub mod vector {
 #[cfg(test)]
 mod tests {
   use super::*;
+  use crate::basics::optional;
   use crate::err::ErrorMsg;
 
   //anything but a comma
