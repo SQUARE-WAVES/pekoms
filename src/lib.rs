@@ -11,6 +11,5 @@ pub use combinators::{
 };
 
 pub use err::{
-  ErrorMsg,
   AltErr
 };

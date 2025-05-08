@@ -1,60 +1,59 @@
-use pekoms::ErrorMsg;
 use std::convert::TryInto;
 
 type BinMatch<'a,'b> = (&'a[u8],&'b[u8]);
 
-pub const fn fixed_len(len:usize) -> impl Fn(&[u8]) -> Result<BinMatch,ErrorMsg> {
+pub const fn fixed_len(len:usize) -> impl Fn(&[u8]) -> Result<BinMatch,()> {
   move |input|{
     if input.len() >= len {
       Ok((&input[0..len],&input[len..]))
     }
     else {
-      Err("not a fixed length of bytes".into())
+      Err(())
     }
   }
 }
 
-pub const fn pfx(p:&'static [u8]) -> impl Fn(&[u8]) -> Result<BinMatch,ErrorMsg> {
+pub const fn pfx(p:&'static [u8]) -> impl Fn(&[u8]) -> Result<BinMatch,()> {
   move |input| {
-    input.strip_prefix(p).map(|r|(p,r)).ok_or("prefix not found".into())
+    input.strip_prefix(p).map(|r|(p,r)).ok_or(())
   }
 }
 
 //this is awkward until we have something like concat_idents in std
 macro_rules! number_converter {
   ($fn_name:ident, $NT:ty) => {
-    pub fn $fn_name(input:&[u8]) -> Result<($NT,&[u8]),ErrorMsg> {
+    pub fn $fn_name(input:&[u8]) -> Result<($NT,&[u8]),()> {
       const SZ : usize = std::mem::size_of::<$NT>();
 
       let (btz,rest) = input.split_at(SZ);
       let bz = btz.try_into();
       bz.map(<$NT>::from_ne_bytes)
       .map(|u|(u,rest))
-      .map_err(|_|"couldn't convert from bytes".into())
+      .map_err(|_|())
     }
   };
   
   ($fn_name:ident, $NT:ty, big_endian) => {
-    pub fn $fn_name(input:&[u8]) -> Result<($NT,&[u8]),ErrorMsg> {
+    pub fn $fn_name(input:&[u8]) -> Result<($NT,&[u8]),()> {
       const SZ : usize = std::mem::size_of::<$NT>();
 
       let (btz,rest) = input.split_at(SZ);
       let bz = btz.try_into();
       bz.map(<$NT>::from_be_bytes)
       .map(|u|(u,rest))
-      .map_err(|_|"couldn't convert from big endian bytes".into())
+      .map_err(|_|())
     }
   };
 
   ($fn_name:ident, $NT:ty, little_endian) => {
-    pub fn $fn_name(input:&[u8]) -> Result<($NT,&[u8]),ErrorMsg> {
+    pub fn $fn_name(input:&[u8]) -> Result<($NT,&[u8]),()> {
       const SZ : usize = std::mem::size_of::<$NT>();
 
       let (btz,rest) = input.split_at(SZ);
       let bz = btz.try_into();
       bz.map(<$NT>::from_le_bytes)
       .map(|u|(u,rest))
-      .map_err(|_|"couldn't convert from little endian bytes".into())
+      .map_err(|_|())
     }
   }
 }

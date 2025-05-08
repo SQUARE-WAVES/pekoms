@@ -59,18 +59,17 @@ impl<I,O,E,F:Fn(I)->Result<(O,I),E>> Parser<I,O> for F {
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::err::ErrorMsg;
 
-  fn guy(input: &str) -> Result<(&str,&str),ErrorMsg> {
+  fn guy(input: &str) -> Result<(&str,&str),()> {
     match input {
-      "" => Err("it's bad".into()),
+      "" => Err(()),
       s => Ok((&s[0..1],&s[1..]))
     }
   }
 
-  fn fzer(input: &str) -> Result<usize,ErrorMsg>{
+  fn fzer(input: &str) -> Result<usize,()>{
     match input {
-      "f" => Err("it's no good".into()),
+      "f" => Err(()),
       s => Ok(s.len())
     }
   }

@@ -3,7 +3,6 @@ use pekoms::{
   alt::alt,
   iter,
   basics::optional,
-  ErrorMsg
 };
 
 mod parsers;
@@ -20,26 +19,26 @@ enum Element<'a> {
   Expr(&'a str,Vec<Element<'a>>)
 }
 
-fn num(input:&str) -> Result<(Element,&str),ErrorMsg> {
+fn num(input:&str) -> Result<(Element,&str),()> {
   int(input).and_then( |(out,res)| {
     out.parse::<i64>()
     .map(|n|(Element::Number(n),res))
-    .map_err(|_|"not a number".into()) 
+    .map_err(|_|()) 
   })
 }
 
-fn sym(input:&str) -> Result<(Element,&str),ErrorMsg> {
+fn sym(input:&str) -> Result<(Element,&str),()> {
   lower_w(input).map(|(s,res)|(Element::Symbol(s),res))
 }
 
-fn txt(input:&str) -> Result<(Element,&str),ErrorMsg> {
+fn txt(input:&str) -> Result<(Element,&str),()> {
   quoted(input).map(|(s,res)|(Element::Text(s),res))
 }
 
-fn expr(input:&str) -> Result<(Element,&str),ErrorMsg> {
+fn expr(input:&str) -> Result<(Element,&str),()> {
   use iter::vector::sep_list;
 
-  let elem = alt((num,sym,txt,expr)).map_err(|_|"not a number,symbol,string or s-expr".into());
+  let elem = alt((num,sym,txt,expr)).map_err(|_|());
 
   let seq = (
     pfx("("),
