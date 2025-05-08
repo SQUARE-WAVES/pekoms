@@ -1,5 +1,3 @@
-use std::error::Error; 
-
 //the main parser trait, its just a function that
 //takes an input and returns an option with an output
 //and a residual input so for example a parser which reads
@@ -10,7 +8,7 @@ use std::error::Error;
 //like &str or &[u8] or &[something else], most of the cloning will just be a pointer
 
 pub trait Parser<I,O> {
-  type Error:Error;
+  type Error;
 
   fn parse(&self,input:I) -> Result<(O,I),Self::Error>;
 
@@ -40,7 +38,7 @@ pub trait Parser<I,O> {
     }
   }
 
-  fn map_err<E2:Error,F:Fn(Self::Error) -> E2>(self,f:F) -> impl Parser<I,O,Error=E2> 
+  fn map_err<E2,F:Fn(Self::Error) -> E2>(self,f:F) -> impl Parser<I,O,Error=E2> 
   where Self: std::marker::Sized
   {
     move |i|{
@@ -50,7 +48,7 @@ pub trait Parser<I,O> {
 
 }
 
-impl<I,O,E:Error,F:Fn(I)->Result<(O,I),E>> Parser<I,O> for F {
+impl<I,O,E,F:Fn(I)->Result<(O,I),E>> Parser<I,O> for F {
   type Error=E;
 
   fn parse(&self, txt:I) -> Result<(O,I),E> {

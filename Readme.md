@@ -14,16 +14,17 @@ and when and where simple, i.e. non proc macros can save some time.
 # what's left to do?
 
 ## errors
-right now this library is lacking a bit when it comes to errors. The parser trait is generic across stuff that implements
-std::error::Error, and there is a built in error type, but it's really just there for writing tests. As well, the alt combinator
-basically has to return it's own special error type that the user has to overwrite, this is annoying.
+Ok so this library doesn't specify much when it comes to errors, that's cause it's hard to know what kind of errors
+you will need depending on what kinda input you are parsing. Parsers have to return a result with an error, but that's it.
+This is a bit annoying cause good error handling is one of the harder parts of actually writing parsers.
 
 ## types of input
-right now the library doesn't really say anthing about the kind of input you can parse other than it has to have the
-`Clone` trait. Clone is kind of a tricky trait cause it doesn't tell you anything about what it takes to clone something.
+right now the library doesn't really say anthing about the kind of input you can parse. If you want to use a lot of the combinators
+your input will need the `Clone` trait. this is becase a lot of things need to look ahead in the input to see what needs to be done.
+
+Clone is kind of a tricky trait cause it doesn't tell you anything about what it takes to clone something.
 Now most of the time this isn't a big deal, stuff like &str, or &[u8] are all clone, and they are also just trivial to copy
-but other things aren't. Like the readers you get from files and such like that. Now it's not too hard to use iterators to read stuff
-in pieces but it's a thing users have to be aware of.
+but other things aren't. Like the readers you get from files and such like that. 
 
 ## some more kinds of combinators
 there are probably other kinds of useful combinators I haven't thought of yet.
