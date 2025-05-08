@@ -9,7 +9,7 @@ use std::error::Error;
 //things like AND and OR parsers, however in practice it will usually be a kind of reference
 //like &str or &[u8] or &[something else], most of the cloning will just be a pointer
 
-pub trait Parser<I:Clone,O> {
+pub trait Parser<I,O> {
   type Error:Error;
 
   fn parse(&self,input:I) -> Result<(O,I),Self::Error>;
@@ -50,7 +50,7 @@ pub trait Parser<I:Clone,O> {
 
 }
 
-impl<I:Clone,O,E:Error,F:Fn(I)->Result<(O,I),E>> Parser<I,O> for F {
+impl<I,O,E:Error,F:Fn(I)->Result<(O,I),E>> Parser<I,O> for F {
   type Error=E;
 
   fn parse(&self, txt:I) -> Result<(O,I),E> {

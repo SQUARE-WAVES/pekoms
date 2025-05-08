@@ -14,28 +14,20 @@ and when and where simple, i.e. non proc macros can save some time.
 # what's left to do?
 
 ## errors
-
 right now this library is lacking a bit when it comes to errors. The parser trait is generic across stuff that implements
-std::error::Error, and there is a built in error type, but it's really jsut there for writing tests. As well, the alt combinator
-basically has to return it's own special error type that the user has to overwrite. Given the generic nature of parser combinators there are 
-a lot of potential pitfalls when designing error handlers and I'm not really sure how I want to move forward 
+std::error::Error, and there is a built in error type, but it's really just there for writing tests. As well, the alt combinator
+basically has to return it's own special error type that the user has to overwrite, this is annoying.
 
-I think I could do something like what [nom](https://github.com/rust-bakery/nom), as their method is also built for streaming
-parsers, but I'm not sure what I want yet.
+## types of input
+right now the library doesn't really say anthing about the kind of input you can parse other than it has to have the
+`Clone` trait. Clone is kind of a tricky trait cause it doesn't tell you anything about what it takes to clone something.
+Now most of the time this isn't a big deal, stuff like &str, or &[u8] are all clone, and they are also just trivial to copy
+but other things aren't. Like the readers you get from files and such like that. Now it's not too hard to use iterators to read stuff
+in pieces but it's a thing users have to be aware of.
 
+## some more kinds of combinators
+there are probably other kinds of useful combinators I haven't thought of yet.
 
-## streams, iterators and other types of input
-
-right now there isn't anything specific to prevent you from using a stream to parse stuff, except that the library probably
-won't play well with things like std::iter::Iterator or std::io. The issue is that it expects your input type to be immutable
-so it can backtrack, however iters and streams don't work that way, walking through them mutates them. With a lot of iters it's no
-big deal you just clone them a bunch, but if you were for example using a lexer from something like [logos](https://github.com/maciejhirsz/logos)
-your cloned iterator would re-do a lot of work lexing stuff.
-
-It's almost certainly possible to make an efficient wrapper, that uses a pointer to a buffer and an iterator or stream type, where
-you create a new value each time you read further, maybe you can do this with all the cursor stuff in std::io, I don't know
-yet. If I end up having a problem where I want to do this kinda thing. I'll figure out a way to handle this but for now I'm not
-really that concerned about it.
 
 # should I use this in a project?
 you can if you want but it's probably not as robust as something like [nom](https://github.com/rust-bakery/nom)
