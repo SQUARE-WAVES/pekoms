@@ -113,7 +113,6 @@ pub mod vector {
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::basics::optional;
   use crate::err::ErrorMsg;
 
   //anything but a comma

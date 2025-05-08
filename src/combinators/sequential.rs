@@ -11,7 +11,7 @@ macro_rules! sequential_parser_impl{
   ($($TypGen:ident $MchGen:ident),+) => {
     //since the generic types names aren't snake cased you need this to avoid a million warnings
     #[allow(non_snake_case)]
-    impl<Inp:Clone, Er:Error, $($TypGen),+, $($MchGen),+> Parser<Inp,($($TypGen),+)> for ($($MchGen,)+)
+    impl<Inp, Er:Error, $($TypGen),+, $($MchGen),+> Parser<Inp,($($TypGen),+)> for ($($MchGen,)+)
     where $($MchGen:Parser<Inp,$TypGen,Error=Er>,)+
     {
       type Error= Er;
