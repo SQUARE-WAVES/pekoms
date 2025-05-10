@@ -73,35 +73,32 @@ pub const fn alt<I,O,P:Into<Alt<I,O,P>>>(ps:P) -> Alt<I,O,P> {
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::err::ErrorMsg;
 
   //some parsers
-  fn dog(inp:&str) -> Result<(&str,&str),ErrorMsg> {
+  fn dog(inp:&str) -> Result<(&str,&str),()> {
     match &inp[0..3] {
       "dog" => Ok((&inp[0..3],&inp[3..])),
-      _ => Err("oh no it's all bad".into())  
+      _ => Err(())  
     }
   }
 
-  fn cat(inp:&str) -> Result<(&str,&str),ErrorMsg> {
+  fn cat(inp:&str) -> Result<(&str,&str),()> {
     match &inp[0..3] {
       "cat" => Ok((&inp[0..3],&inp[3..])),
-      _ => Err("oh no its all bad".into())
+      _ => Err(())
     }
   }
 
-  fn fish(inp:&str) -> Result<(&str,&str),ErrorMsg> {
+  fn fish(inp:&str) -> Result<(&str,&str),()> {
     match &inp[0..4] {
       "fish" => Ok((&inp[0..4],&inp[4..])),
-      _ => Err("oh no its all bad".into())
+      _ => Err(())
     }
   }
 
   #[test]
   fn test_alts() {
-    let z = alt((dog,cat,fish)).map_err(|_| -> ErrorMsg { 
-      "it needs to be a dog, a cat, or a fish".into() 
-    });
+    let z = alt((dog,cat,fish)).map_err(|_|());
 
     let (out,res) = z.parse("dogzone").expect("the dog parser should succeed");
     assert_eq!("dog",out);

@@ -1,19 +1,17 @@
-use pekoms::ErrorMsg;
-
 //this is a module for other examples to depend on
 //the errors are really bad right now, we can probably make them better
-pub fn lower_w(input:&str) -> Result<(&str,&str),ErrorMsg> {
+pub fn lower_w(input:&str) -> Result<(&str,&str),()> {
   let cs = input.chars();
   let l = cs.take_while(|c|c.is_ascii_lowercase()).count();
   if l==0 {
-    Err("not a lower_w".into())
+    Err(())
   }
   else {
     Ok((&input[0..l],&input[l..]))
   }
 }
 
-pub fn word(input:&str) -> Result<(&str,&str),ErrorMsg> {
+pub fn word(input:&str) -> Result<(&str,&str),()> {
   //first thing needs to be a letter
   input.chars().next().and_then(|c|{
     if c.is_ascii_alphabetic() {
@@ -23,7 +21,7 @@ pub fn word(input:&str) -> Result<(&str,&str),ErrorMsg> {
       None
     }
   })
-  .ok_or("expected first char to be a letter")?;
+  .ok_or(())?;
 
   let finale = input.char_indices().find(|(_i,c)|{
     !(c.is_ascii_alphanumeric() || *c == '_')
@@ -35,31 +33,31 @@ pub fn word(input:&str) -> Result<(&str,&str),ErrorMsg> {
   }
 }
 
-pub fn alphanum(input:&str) -> Result<(&str,&str),ErrorMsg> {
+pub fn alphanum(input:&str) -> Result<(&str,&str),()> {
   let split_point = input.char_indices().find(|(_,c)|!c.is_alphanumeric())
   .map(|(i,_)|i)
   .unwrap_or(input.len());
 
   if split_point == 0 {
-    Err("expected alphanumeric character".into())
+    Err(())
   }
   else {
     Ok(input.split_at(split_point))
   }
 }
 
-pub fn digits(input:&str) -> Result<(&str,&str),ErrorMsg> {
+pub fn digits(input:&str) -> Result<(&str,&str),()> {
   let cs = input.chars();
   let l = cs.take_while(|c|c.is_ascii_digit()).count();
   if l == 0 {
-    Err("not digits".into())
+    Err(())
   }
   else {
     Ok((&input[0..l],&input[l..]))
   }
 }
 
-pub fn digit(input:&str) -> Result<(&str,&str),ErrorMsg> {
+pub fn digit(input:&str) -> Result<(&str,&str),()> {
   input.chars().next()
   .and_then(|c|{
     if c.is_ascii_digit() {
@@ -70,10 +68,10 @@ pub fn digit(input:&str) -> Result<(&str,&str),ErrorMsg> {
       None
     }
   })
-  .ok_or("not a digit".into())
+  .ok_or(())
 }
 
-pub fn decimal_digits(input:&str) -> Result<(&str,&str),ErrorMsg>  {
+pub fn decimal_digits(input:&str) -> Result<(&str,&str),()>  {
   let cs = input.chars();
   let l = cs.take_while({
     let mut dot = false;
@@ -89,32 +87,32 @@ pub fn decimal_digits(input:&str) -> Result<(&str,&str),ErrorMsg>  {
   }).count();
 
   if l == 0 {
-    Err("not decimal digits".into())
+    Err(())
   }
   else {
     Ok((&input[0..l],&input[l..]))
   }
 }
 
-pub fn int(input:&str) -> Result<(&str,&str),ErrorMsg> {
+pub fn int(input:&str) -> Result<(&str,&str),()> {
   match input.strip_prefix("-") {
     Some(rest) => digits(rest).map(|(rem,res)|(&input[0..rem.len()+1],res)),
     None => digits(input)
   }
 }
 
-pub fn float(input:&str) -> Result<(&str,&str),ErrorMsg> {
+pub fn float(input:&str) -> Result<(&str,&str),()> {
   match input.strip_prefix("-") {
     Some(rest) => decimal_digits(rest).map(|(rem,res)|(&input[0..rem.len()+1],res)),
     None => decimal_digits(input)
   }
 }
 
-pub fn ws(input:&str) -> Result<(usize,&str),ErrorMsg> {
+pub fn ws(input:&str) -> Result<(usize,&str),()> {
   let cs = input.chars();
   let l = cs.take_while(|c|c.is_ascii_whitespace()).count();
   if l == 0 {
-    Err("not whitespace".into())
+    Err(())
   }
   else {
     //todo::fix this up to use char indices,
@@ -123,54 +121,54 @@ pub fn ws(input:&str) -> Result<(usize,&str),ErrorMsg> {
   }
 }
 
-pub fn spaces(input:&str) -> Result<(usize,&str),ErrorMsg> {
+pub fn spaces(input:&str) -> Result<(usize,&str),()> {
   let cs = input.chars();
   let l = cs.take_while(|c|*c == ' ').count();
   if l == 0 {
-    Err("not spaces".into())
+    Err(())
   }
   else {
     Ok((l,&input[l..]))
   }
 }
 
-pub fn end(input:&str) -> Result<(&str,&str),ErrorMsg> {
+pub fn end(input:&str) -> Result<(&str,&str),()> {
   if input.is_empty() {
     Ok(("",""))
   }
   else {
-    Err("not the end".into())
+    Err(())
   }
 }
 
-pub const fn pfx(word: &'static str) -> impl Fn(&str)->Result<(&str,&str),ErrorMsg> {
+pub const fn pfx(word: &'static str) -> impl Fn(&str)->Result<(&str,&str),()> {
   move |inp| {
     inp.strip_prefix(word) 
     .map(|rest|(word,rest))
-    .ok_or(word.into())
+    .ok_or(())
   }
 }
 
 //this is the slow way of doing this, it's fine for small char_sets though:
-pub const fn one_of(char_set:&'static str) -> impl Fn(&str)->Result<(char,&str),ErrorMsg> {
+pub const fn one_of(char_set:&'static str) -> impl Fn(&str)->Result<(char,&str),()> {
   move |inp| {
-    let c : char = inp.chars().next().ok_or(ErrorMsg::from("unexpected empty string"))?;
+    let c : char = inp.chars().next().ok_or(())?;
     
     if char_set.contains(c) {
       Ok((c,&inp[c.len_utf8()..])) //you gotta be careful slicing &str
     }
     else {
-      Err("its bad".into())
+      Err(())
     }
   }
 }
 
-pub fn quoted(input:&str) -> Result<(&str,&str),ErrorMsg> {
+pub fn quoted(input:&str) -> Result<(&str,&str),()> {
   input.strip_prefix("\"")
-  .ok_or("no start quote".into())
+  .ok_or(())
   .and_then(|rest|{
     rest.char_indices().find(|(_i,c)|*c == '"')
-    .ok_or("no end quote".into()) 
+    .ok_or(()) 
     .map(|(i,_c)|rest.split_at(i+1)) //this i+1 is safe because we know " is len 1
   })
 }

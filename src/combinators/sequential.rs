@@ -1,6 +1,4 @@
 use crate::parser::Parser;
-
-use std::error::Error;
 /*=============================================================================
 This macro implemnts the parser trait for tuples of parsers, and makes them run in sequence,
 so for example if you have the parser "word" which matches a bunch of letters
@@ -11,7 +9,7 @@ macro_rules! sequential_parser_impl{
   ($($TypGen:ident $MchGen:ident),+) => {
     //since the generic types names aren't snake cased you need this to avoid a million warnings
     #[allow(non_snake_case)]
-    impl<Inp, Er:Error, $($TypGen),+, $($MchGen),+> Parser<Inp,($($TypGen),+)> for ($($MchGen,)+)
+    impl<Inp, Er, $($TypGen),+, $($MchGen),+> Parser<Inp,($($TypGen),+)> for ($($MchGen,)+)
     where $($MchGen:Parser<Inp,$TypGen,Error=Er>,)+
     {
       type Error= Er;
@@ -43,18 +41,17 @@ sequential_parser_impl!(At A,Bt B,Ct C,Dt D,Et E, Ft F, Gt G, Ht H, It I, Jt J, 
 mod tests
 {
   use super::*;
-  use crate::err::ErrorMsg;
 
-  fn dot(inp:&str) -> Result<(&str,&str),ErrorMsg> {
-    inp.strip_prefix(".").map(|r|(".",r)).ok_or("its bad".into())
+  fn dot(inp:&str) -> Result<(&str,&str),()> {
+    inp.strip_prefix(".").map(|r|(".",r)).ok_or(())
   }
 
-  fn dash(inp:&str) -> Result<(&str,&str),ErrorMsg> {
-    inp.strip_prefix("-").map(|r|("-",r)).ok_or("its bad".into())
+  fn dash(inp:&str) -> Result<(&str,&str),()> {
+    inp.strip_prefix("-").map(|r|("-",r)).ok_or(())
   }
 
-  fn space(inp:&str) -> Result<(&str,&str),ErrorMsg> {
-    inp.strip_prefix(" ").map(|r|(" ",r)).ok_or("its bad".into())
+  fn space(inp:&str) -> Result<(&str,&str),()> {
+    inp.strip_prefix(" ").map(|r|(" ",r)).ok_or(())
   }
 
   #[test]

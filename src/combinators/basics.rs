@@ -26,14 +26,13 @@ pub const fn peek<I:Clone,O,P:Parser<I,O>>(p:P) -> impl Parser<I,O,Error=P::Erro
 mod tests
 {
   use super::*;
-  use crate::err::ErrorMsg;
   //some little parsers
-  fn dot(inp:&str) -> Result<(&str,&str),ErrorMsg> {
-    inp.strip_prefix(".").map(|r|(".",r)).ok_or("its bad".into())
+  fn dot(inp:&str) -> Result<(&str,&str),()> {
+    inp.strip_prefix(".").map(|r|(".",r)).ok_or(())
   }
 
-  fn dash(inp:&str) -> Result<(&str,&str),ErrorMsg> {
-    inp.strip_prefix("-").map(|r|("-",r)).ok_or("its bad".into())
+  fn dash(inp:&str) -> Result<(&str,&str),()> {
+    inp.strip_prefix("-").map(|r|("-",r)).ok_or(())
   }
 
   #[test]
