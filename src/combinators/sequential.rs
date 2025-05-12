@@ -1,4 +1,5 @@
 use crate::parser::Parser;
+
 /*=============================================================================
 This macro implemnts the parser trait for tuples of parsers, and makes them run in sequence,
 so for example if you have the parser "word" which matches a bunch of letters
@@ -85,4 +86,5 @@ mod tests
     let bad = morse_sos.parse("...---...");
     assert!(bad.is_err());
   }
+
 }
