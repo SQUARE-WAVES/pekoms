@@ -1,5 +1,4 @@
 use crate::parser::Parser;
-use crate::err::AltErr;
 //this is a vehicle to implement the parser trait
 //I'm already using tuples to handle sequential
 //parsing.
@@ -54,7 +53,6 @@ macro_rules! alt_parser_impl {
     }
   }
 }
-
 
 //we could do some macro recursion to get rid of these pyramids
 //but I think this makes the macro itself easier to read
