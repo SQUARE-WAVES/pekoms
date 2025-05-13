@@ -16,18 +16,37 @@ and when and where simple, i.e. non proc macros can save some time.
 ## errors
 Ok so this library doesn't specify much when it comes to errors, that's cause it's hard to know what kind of errors
 you will need depending on what kinda input you are parsing. Parsers have to return a result with an error, but that's it.
-This is a bit annoying cause good error handling is one of the harder parts of actually writing parsers.
+This is a bit annoying cause good error handling is one of the harder parts of actually writing parsers. and that's a kind
+of thing you'd want something like this to help with.
 
 ## types of input
 right now the library doesn't really say anthing about the kind of input you can parse. If you want to use a lot of the combinators
-your input will need the `Clone` trait. this is becase a lot of things need to look ahead in the input to see what needs to be done.
+your input will need the `Clone` trait. this is becase a lot of things need to backtrack.
 
 Clone is kind of a tricky trait cause it doesn't tell you anything about what it takes to clone something.
 Now most of the time this isn't a big deal, stuff like &str, or &[u8] are all clone, and they are also just trivial to copy
-but other things aren't. Like the readers you get from files and such like that. 
+but other things aren't. Like the readers you get from files and such like that.
 
 ## some more kinds of combinators
 there are probably other kinds of useful combinators I haven't thought of yet.
+
+## macro hygine
+this library uses macros to implement some traits on sets of tuples. It's stuff you can't really use arrays for 
+because arryas have to be homogenously typed and parsers, at least the way I'm doing them, tend to all have different types. 
+You can do some tricks with dyn but I think it's preferable not to.
+
+That being said some of the ways I've written the macros aren't the greatest, I've opted for making them easier to read
+meaning they tend to expand to big linear blobs,rather than nice recursive steps. This can cause them to give big nasty
+errors if you type something wrong.
+
+## some helpers for actually doing a parser right
+based on my time using this there are some convenience things that I end up making over again. For example when parsing
+&strs it's nice to have a data type for the input that keeps track of your parsers position in the original source file.
+
+If you start with a string and do &x[10..20] or something it's not easy to take the resulting &str and ask
+what it's position in the original source was. you can get a pointer offset, but that's not exactly safe, cause you can't
+validate the &strs provenance. like if our memory looked like [str1,something,something,str2] and I had a pointer to str2
+if I asked for it's offset from str1 it would give that to me.
 
 
 # should I use this in a project?

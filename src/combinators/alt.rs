@@ -21,9 +21,9 @@ impl<I,O,P> Alt<I,O,P> {
 }
 
 macro_rules! alt_parser_impl {
-  ($TYPE:ident; $($PARSER:ident),+) => {
-    impl<IN:Clone, $TYPE, $($PARSER),+> From<($($PARSER),+)> for Alt<IN,$TYPE,($($PARSER,)+)> 
-    where $($PARSER:Parser<IN,$TYPE>,)+
+  ($($PARSER:ident),+) => {
+    impl<IN:Clone, OUT, $($PARSER),+> From<($($PARSER),+)> for Alt<IN,OUT,($($PARSER,)+)> 
+    where $($PARSER:Parser<IN,OUT>,)+
     {
       fn from(ps:($($PARSER),+)) -> Self {
         Self {
@@ -34,12 +34,12 @@ macro_rules! alt_parser_impl {
     }
 
     #[allow(non_snake_case)] //you are gonna re-use generic names as variable names
-    impl<IN:Clone, $TYPE, $($PARSER),+ > Parser<IN,$TYPE> for Alt<IN,$TYPE,($($PARSER,)+)>
-    where $($PARSER:Parser<IN,$TYPE>,)+
+    impl<IN:Clone, OUT, $($PARSER),+ > Parser<IN,OUT> for Alt<IN,OUT,($($PARSER,)+)>
+    where $($PARSER:Parser<IN,OUT>,)+
     {
       type Error=($($PARSER::Error),+);
 
-      fn parse(&self,txt:IN)->Result<($TYPE,IN),Self::Error> {
+      fn parse(&self,txt:IN)->Result<(OUT,IN),Self::Error> {
         let Alt{ ps:($($PARSER),+),.. } = self;
 
         //this works cause let A = match A will get the variables right
@@ -56,18 +56,18 @@ macro_rules! alt_parser_impl {
 
 //we could do some macro recursion to get rid of these pyramids
 //but I think this makes the macro itself easier to read
-alt_parser_impl!(Typ; A,B);
-alt_parser_impl!(Typ; A,B,C);
-alt_parser_impl!(Typ; A,B,C,D);
-alt_parser_impl!(Typ; A,B,C,D,E);
-alt_parser_impl!(Typ; A,B,C,D,E,F);
-alt_parser_impl!(Typ; A,B,C,D,E,F,G);
-alt_parser_impl!(Typ; A,B,C,D,E,F,G,H);
-alt_parser_impl!(Typ; A,B,C,D,E,F,G,H,I);
-alt_parser_impl!(Typ; A,B,C,D,E,F,G,H,I,J);
-alt_parser_impl!(Typ; A,B,C,D,E,F,G,H,I,J,K);
-alt_parser_impl!(Typ; A,B,C,D,E,F,G,H,I,J,K,L);
-alt_parser_impl!(Typ; A,B,C,D,E,F,G,H,I,J,K,L,M);
+alt_parser_impl!(A,B);
+alt_parser_impl!(A,B,C);
+alt_parser_impl!(A,B,C,D);
+alt_parser_impl!(A,B,C,D,E);
+alt_parser_impl!(A,B,C,D,E,F);
+alt_parser_impl!(A,B,C,D,E,F,G);
+alt_parser_impl!(A,B,C,D,E,F,G,H);
+alt_parser_impl!(A,B,C,D,E,F,G,H,I);
+alt_parser_impl!(A,B,C,D,E,F,G,H,I,J);
+alt_parser_impl!(A,B,C,D,E,F,G,H,I,J,K);
+alt_parser_impl!(A,B,C,D,E,F,G,H,I,J,K,L);
+alt_parser_impl!(A,B,C,D,E,F,G,H,I,J,K,L,M);
 
 //this is a convenience method to make constructing an alt easier
 // the into trait ends up just being kinda helpful as it's safer to

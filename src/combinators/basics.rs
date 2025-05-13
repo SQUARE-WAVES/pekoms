@@ -26,7 +26,7 @@ pub const fn peek<I:Clone,O,P:Parser<I,O>>(p:P) -> impl Parser<I,O,Error=P::Erro
 mod tests
 {
   use super::*;
-  //some little parsers
+
   fn dot(inp:&str) -> Result<(&str,&str),()> {
     inp.strip_prefix(".").map(|r|(".",r)).ok_or(())
   }
@@ -37,6 +37,7 @@ mod tests
 
   #[test]
   fn test_optional() {
+
     let input = ".";
     let opt_dot = optional(dot);
     let opt_dash = optional(dash);

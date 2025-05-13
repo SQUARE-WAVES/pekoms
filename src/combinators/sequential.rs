@@ -24,6 +24,10 @@ macro_rules! sequential_parser_impl{
   }
 }
 
+
+//I need to have types on here cause that's part of the parser thing
+//I guess I could make them hidden like I do with the errors but IDK
+//It's not really that big a deal for the macro
 sequential_parser_impl!(At A,Bt B);
 sequential_parser_impl!(At A,Bt B,Ct C);
 sequential_parser_impl!(At A,Bt B,Ct C,Dt D);
