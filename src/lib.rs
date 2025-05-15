@@ -1,6 +1,5 @@
 mod parser;
 mod combinators;
-mod tuples;
 
 pub use parser::Parser;
 pub use combinators::{
