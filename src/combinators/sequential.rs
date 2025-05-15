@@ -1,5 +1,4 @@
 use crate::parser::Parser;
-
 /*=============================================================================
 This macro implemnts the parser trait for tuples of parsers, and makes them run in sequence,
 so for example if you have the parser "word" which matches a bunch of letters
@@ -27,25 +26,26 @@ macro_rules! sequential_parser_impl {
     sequential_parser_impl!($($Rest),+);
   };
 
-  (__frfr; $($Parser:ident),+) => {
+  (__frfr; $First:ident, $($Parser:ident),+) => {
     //since the generic types names aren't snake cased you need this to avoid a million warnings
     #[allow(non_snake_case)]
-    impl<Inp, Er, $($Parser),+> Parser<Inp> for ($($Parser,)+)
+    impl<Inp, Er, $First, $($Parser),+> Parser<Inp> for ($First, $($Parser,)+)
     where 
+      $First:Parser<Inp,Error=Er>,
       $($Parser:Parser<Inp,Error=Er>,)+
     {
       type Error= Er;
-      type Out = ($($Parser::Out),+);
+      type Out = ($First::Out, $($Parser::Out),+);
 
       fn parse(&self,txt:Inp)->Result<(Self::Out,Inp),Self::Error> {
-        let ($($Parser),+) = self;
+        let ($First, $($Parser),+) = self;
+        let ($First,txt) = $First.parse(txt)?;
         $(let ($Parser,txt) = $Parser.parse(txt)?;)+
-        Ok((($($Parser),+),txt))
+        Ok((($First,$($Parser),+),txt))
       }
     }
   }
 }
-
 
 sequential_parser_impl!(A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S,T,U,V,W,X,Y,Z);
 

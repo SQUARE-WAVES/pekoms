@@ -14,10 +14,12 @@ impl<I,ER,P> Branch<I,ER,P> {
 macro_rules! branch_impl {
   ($P:ident) => {
   };
+
   ($First:ident, $($Rest:ident),+) => {
     branch_impl!(__frfr; $First, $($Rest),+);
     branch_impl!($($Rest),+);
   };
+
   (__frfr; $($Seg:ident),+) => {
     impl<IN:Clone, OUT,ER, $($Seg),+> From<($($Seg),+)> for Branch<IN,ER,($($Seg,)+)> 
     where $($Seg:Parser<IN,Out=OUT,Error=Option<ER>>,)+
