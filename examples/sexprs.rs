@@ -38,7 +38,7 @@ fn txt(input:&str) -> Result<(Element,&str),()> {
 fn expr(input:&str) -> Result<(Element,&str),()> {
   use iter::vector::sep_list;
 
-  let elem = alt((num,sym,txt,expr)).map_err(|_|());
+  let elem = alt((expr,num,sym,txt)).map_err(|_|());
 
   let seq = (
     pfx("("),

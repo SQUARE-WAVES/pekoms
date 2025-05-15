@@ -6,41 +6,48 @@ so for example if you have the parser "word" which matches a bunch of letters
 and the parser "comma" which matches a comma, the tuple (word,comma) would be
 a parser that matches a word and then a comma
 =============================================================================*/
-macro_rules! sequential_parser_impl{
-  ($($TypGen:ident $MchGen:ident),+) => {
+macro_rules! sequential_parser_impl {
+  ($First:ident) => {
+    #[allow(non_snake_case)]
+    impl<Inp,$First> Parser<Inp> for ($First, )
+    where 
+      $First:Parser<Inp>
+    {
+      type Error= $First::Error;
+      type Out = $First::Out;
+
+      fn parse(&self,txt:Inp)->Result<(Self::Out,Inp),Self::Error> {
+        self.0.parse(txt)
+      }
+    }
+  };
+
+  ($First:ident, $($Rest:ident),+) => {
+    sequential_parser_impl!(__frfr; $First ,$($Rest),+);
+    sequential_parser_impl!($($Rest),+);
+  };
+
+  (__frfr; $($Parser:ident),+) => {
     //since the generic types names aren't snake cased you need this to avoid a million warnings
     #[allow(non_snake_case)]
-    impl<Inp, Er, $($TypGen),+, $($MchGen),+> Parser<Inp,($($TypGen),+)> for ($($MchGen,)+)
-    where $($MchGen:Parser<Inp,$TypGen,Error=Er>,)+
+    impl<Inp, Er, $($Parser),+> Parser<Inp> for ($($Parser,)+)
+    where 
+      $($Parser:Parser<Inp,Error=Er>,)+
     {
       type Error= Er;
+      type Out = ($($Parser::Out),+);
 
-      fn parse(&self,txt:Inp)->Result<(($($TypGen),+),Inp),Self::Error> {
-        let ($($MchGen),+) = self;
-        $(let ($TypGen,txt) = $MchGen.parse(txt)?;)+
-        Ok((($($TypGen),+),txt))
+      fn parse(&self,txt:Inp)->Result<(Self::Out,Inp),Self::Error> {
+        let ($($Parser),+) = self;
+        $(let ($Parser,txt) = $Parser.parse(txt)?;)+
+        Ok((($($Parser),+),txt))
       }
     }
   }
 }
 
 
-//I need to have types on here cause that's part of the parser thing
-//I guess I could make them hidden like I do with the errors but IDK
-//It's not really that big a deal for the macro
-sequential_parser_impl!(At A,Bt B);
-sequential_parser_impl!(At A,Bt B,Ct C);
-sequential_parser_impl!(At A,Bt B,Ct C,Dt D);
-sequential_parser_impl!(At A,Bt B,Ct C,Dt D,Et E);
-sequential_parser_impl!(At A,Bt B,Ct C,Dt D,Et E, Ft F);
-sequential_parser_impl!(At A,Bt B,Ct C,Dt D,Et E, Ft F, Gt G);
-sequential_parser_impl!(At A,Bt B,Ct C,Dt D,Et E, Ft F, Gt G, Ht H);
-sequential_parser_impl!(At A,Bt B,Ct C,Dt D,Et E, Ft F, Gt G, Ht H, It I);
-sequential_parser_impl!(At A,Bt B,Ct C,Dt D,Et E, Ft F, Gt G, Ht H, It I, Jt J);
-sequential_parser_impl!(At A,Bt B,Ct C,Dt D,Et E, Ft F, Gt G, Ht H, It I, Jt J, Kt K);
-sequential_parser_impl!(At A,Bt B,Ct C,Dt D,Et E, Ft F, Gt G, Ht H, It I, Jt J, Kt K, Lt L);
-sequential_parser_impl!(At A,Bt B,Ct C,Dt D,Et E, Ft F, Gt G, Ht H, It I, Jt J, Kt K, Lt L, Mt M);
-
+sequential_parser_impl!(A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S,T,U,V,W,X,Y,Z);
 
 #[cfg(test)]
 mod tests
@@ -90,5 +97,4 @@ mod tests
     let bad = morse_sos.parse("...---...");
     assert!(bad.is_err());
   }
-
 }
