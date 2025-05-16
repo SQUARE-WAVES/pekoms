@@ -50,14 +50,13 @@ fn sep(input:&str) -> Result<((),&str),()> {
 }
 
 fn elem(input:&str) -> Result<(Element,&str),()> {
-  alt((null,boolean,num,txt,list,obj))
+  alt((list,obj,null,boolean,num,txt))
   .map_err(|_|())
   .parse(input)
 }
 
 fn list(input:&str) -> Result<(Element,&str),()> {
   use iter::vector::sep_list;
-
   let seq = (pfx("["),optional(ws),sep_list(elem,sep),optional(ws),pfx("]"));
   seq.map(|(_open,_gap,elems,_end_gap,_close)|Element::List(elems)).parse(input)
 }

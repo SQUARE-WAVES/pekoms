@@ -1,18 +1,17 @@
 use crate::Parser;
 use crate::basics::optional;
 
-pub struct ParseIter<'a,I,O,P> {
+pub struct ParseIter<'a,I,P> {
   parser:&'a P,
   input:I,
-  _ghost:std::marker::PhantomData<O>
 }
 
-impl<I,O,P> Iterator for ParseIter<'_,I,O,P>
+impl<I,P> Iterator for ParseIter<'_,I,P>
 where
   I:Clone,
-  P:Parser<I,O>
+  P:Parser<I>
 {
-  type Item = O;
+  type Item = P::Out;
 
   fn next(&mut self) -> Option<Self::Item> {
     let inp = self.input.clone();
@@ -28,16 +27,15 @@ where
   }
 }
 
-impl<'a,I,O,P> ParseIter<'a,I,O,P>
+impl<'a,I,P> ParseIter<'a,I,P>
 where
   I:Clone,
-  P:Parser<I,O>
+  P:Parser<I>
 {
   pub fn new(parser:&'a P,input:I) -> Self {
     Self {
       parser,
-      input,
-      _ghost:std::marker::PhantomData
+      input
     }
   }
  
@@ -49,7 +47,11 @@ where
 pub mod vector {
   use super::*;
 
-  pub const fn star<I:Clone,O,P:Parser<I,O>>(parser:P) -> impl Parser<I,Vec<O>,Error=P::Error> {
+  pub const fn star<I,P>(parser:P) -> impl Parser<I,Out=Vec<P::Out>,Error=P::Error> 
+  where
+    I:Clone,
+    P:Parser<I>
+  {
     move |txt:I| {
       let mut iter = ParseIter::new(&parser,txt);
       let v = (&mut iter).collect();
@@ -57,7 +59,11 @@ pub mod vector {
     }
   }
   
-  pub const fn plus<I:Clone,O,P:Parser<I,O>>(parser:P) -> impl Parser<I,Vec<O>,Error=P::Error> {
+  pub const fn plus<I,P>(parser:P) -> impl Parser<I,Out=Vec<P::Out>,Error=P::Error> 
+    where
+    I:Clone,
+    P:Parser<I>
+  {
     move |txt:I| {
       let (iv,rest) = parser.parse(txt)?;
       let mut iter = ParseIter::new(&parser,rest);
@@ -66,11 +72,11 @@ pub mod vector {
     }
   }
 
-  pub const fn sep_list<I,O,O2,E,P,P2>(item:P,sep:P2) -> impl Parser<I,Vec<O>,Error=E> 
+  pub const fn sep_list<I,P,P2>(item:P,sep:P2) -> impl Parser<I,Out=Vec<P::Out>,Error=P::Error> 
   where
     I:Clone,
-    P:Parser<I,O,Error=E>,
-    P2:Parser<I,O2,Error=E>
+    P:Parser<I>,
+    P2:Parser<I,Error=P::Error>
   {
     let parse_seq = (item,optional(sep));
     move |txt:I| {
@@ -82,13 +88,13 @@ pub mod vector {
   }
 
   //this is a sep list with a minimum of one match!
-  pub const fn sep_list_plus<I,O,O2,E,P,P2>(item:P,sep:P2) -> impl Parser<I,Vec<O>,Error=E> 
+  pub const fn sep_list_plus<I,P,P2>(i:P,sp:P2) -> impl Parser<I,Out=Vec<P::Out>,Error=P::Error> 
   where
     I:Clone,
-    P:Parser<I,O,Error=E>,
-    P2:Parser<I,O2,Error=E>
+    P:Parser<I>,
+    P2:Parser<I,Error=P::Error>
   {
-    let parse_seq = (item,optional(sep));
+    let parse_seq = (i,optional(sp));
     move |txt:I| {
       match parse_seq.parse(txt) {
         Err(e) => Err(e),
@@ -175,7 +181,7 @@ mod tests {
   fn check_sep_list_plus_vec() {
     let z = vector::sep_list_plus(guy,comma);
 
-    let _bad = z.parse(",f,i,s,h").expect_err("rudy should fail!");
+    z.parse(",f,i,s,h").expect_err("rudy should fail!");
 
     let (out,res) = z.parse("s,t,a,b,s").expect("it should go!");
     assert_eq!(vec!["s","t","a","b","s"],out,"the non-fish parse should go right");

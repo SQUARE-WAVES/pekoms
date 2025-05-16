@@ -7,19 +7,20 @@
 //things like AND and OR parsers, however in practice it will usually be a kind of reference
 //like &str or &[u8] or &[something else], most of the cloning will just be a pointer
 
-pub trait Parser<I,O> {
+pub trait Parser<I> {
   type Error;
+  type Out;
 
-  fn parse(&self,input:I) -> Result<(O,I),Self::Error>;
-
+  fn parse(&self,input:I) -> Result<(Self::Out,I),Self::Error>;
   //Output mods
   //these are handy functions that allow you to modify the output of an existing parser
   //they are analagous to the same methods on the Result type, as they basically
   //just make a thunk which uses the result methods on the non-residual portion
   //of the output
   
-  fn map<O2,F:Fn(O)->O2>(self,f:F) -> impl Parser<I,O2,Error=Self::Error> 
-  where Self: std::marker::Sized
+  fn map<O2,F:Fn(Self::Out)->O2>(self,f:F) -> impl Parser<I,Out=O2,Error=Self::Error> 
+  where
+    Self: std::marker::Sized
   {
     move |i|{
       self.parse(i).map(|(out,residual)|{
@@ -28,8 +29,10 @@ pub trait Parser<I,O> {
     }
   }
 
-  fn and_then<O2,F:Fn(O)->Result<O2,Self::Error>>(self,f:F) -> impl Parser<I,O2,Error=Self::Error>
-  where Self: std::marker::Sized
+  fn and_then<O2,F>(self,f:F) -> impl Parser<I,Out=O2,Error=Self::Error>
+  where 
+    Self: std::marker::Sized,
+    F:Fn(Self::Out)->Result<O2,Self::Error>
   {
     move |i|{
       self.parse(i).and_then(|(out,residual)|{
@@ -38,18 +41,19 @@ pub trait Parser<I,O> {
     }
   }
 
-  fn map_err<E2,F:Fn(Self::Error) -> E2>(self,f:F) -> impl Parser<I,O,Error=E2> 
-  where Self: std::marker::Sized
+  fn map_err<E2,F:Fn(Self::Error) -> E2>(self,f:F) -> impl Parser<I,Out=Self::Out,Error=E2> 
+  where
+    Self: std::marker::Sized
   {
     move |i|{
       self.parse(i).map_err(&f)
     }
   }
-
 }
 
-impl<I,O,E,F:Fn(I)->Result<(O,I),E>> Parser<I,O> for F {
+impl<I,O,E,F:Fn(I)->Result<(O,I),E>> Parser<I> for F {
   type Error=E;
+  type Out=O;
 
   fn parse(&self, txt:I) -> Result<(O,I),E> {
     self(txt)

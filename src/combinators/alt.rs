@@ -9,21 +9,28 @@ use crate::parser::Parser;
 //something where you can match either "alf" as a keyword
 //or just any random word, you have to try "alf" as a keyword
 //first!
-pub struct Alt<I,O,P> {
+pub struct Alt<I,P> {
   ps:P,
-  _ghost:std::marker::PhantomData<(I,O)>
+  _ghost:std::marker::PhantomData<I>
 }
 
-impl<I,O,P> Alt<I,O,P> {
+impl<I,P> Alt<I,P> {
   pub const fn new(ps:P) -> Self {
     Self{ps,_ghost:std::marker::PhantomData }
   }
 }
 
 macro_rules! alt_parser_impl {
-  ($TYPE:ident; $($PARSER:ident),+) => {
-    impl<IN:Clone, $TYPE, $($PARSER),+> From<($($PARSER),+)> for Alt<IN,$TYPE,($($PARSER,)+)> 
-    where $($PARSER:Parser<IN,$TYPE>,)+
+
+  ($P:ident) => {
+  };
+  ($First:ident, $($Rest:ident),+) => {
+    alt_parser_impl!(__frfr; $First, $($Rest),+);
+    alt_parser_impl!($($Rest),+);
+  };
+  (__frfr; $($PARSER:ident),+) => {
+    impl<IN:Clone, OUT, $($PARSER),+> From<($($PARSER),+)> for Alt<IN,($($PARSER,)+)> 
+    where $($PARSER:Parser<IN,Out=OUT>,)+
     {
       fn from(ps:($($PARSER),+)) -> Self {
         Self {
@@ -34,12 +41,13 @@ macro_rules! alt_parser_impl {
     }
 
     #[allow(non_snake_case)] //you are gonna re-use generic names as variable names
-    impl<IN:Clone, $TYPE, $($PARSER),+ > Parser<IN,$TYPE> for Alt<IN,$TYPE,($($PARSER,)+)>
-    where $($PARSER:Parser<IN,$TYPE>,)+
+    impl<IN:Clone, OUT, $($PARSER),+ > Parser<IN> for Alt<IN,($($PARSER,)+)>
+    where $($PARSER:Parser<IN,Out=OUT>,)+
     {
       type Error=($($PARSER::Error),+);
+      type Out = OUT;
 
-      fn parse(&self,txt:IN)->Result<($TYPE,IN),Self::Error> {
+      fn parse(&self,txt:IN)->Result<(OUT,IN),Self::Error> {
         let Alt{ ps:($($PARSER),+),.. } = self;
 
         //this works cause let A = match A will get the variables right
@@ -56,23 +64,12 @@ macro_rules! alt_parser_impl {
 
 //we could do some macro recursion to get rid of these pyramids
 //but I think this makes the macro itself easier to read
-alt_parser_impl!(Typ; A,B);
-alt_parser_impl!(Typ; A,B,C);
-alt_parser_impl!(Typ; A,B,C,D);
-alt_parser_impl!(Typ; A,B,C,D,E);
-alt_parser_impl!(Typ; A,B,C,D,E,F);
-alt_parser_impl!(Typ; A,B,C,D,E,F,G);
-alt_parser_impl!(Typ; A,B,C,D,E,F,G,H);
-alt_parser_impl!(Typ; A,B,C,D,E,F,G,H,I);
-alt_parser_impl!(Typ; A,B,C,D,E,F,G,H,I,J);
-alt_parser_impl!(Typ; A,B,C,D,E,F,G,H,I,J,K);
-alt_parser_impl!(Typ; A,B,C,D,E,F,G,H,I,J,K,L);
-alt_parser_impl!(Typ; A,B,C,D,E,F,G,H,I,J,K,L,M);
+alt_parser_impl!(A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S,T,U,V,W,X,Y,Z);
 
 //this is a convenience method to make constructing an alt easier
 // the into trait ends up just being kinda helpful as it's safer to
 // use the const new
-pub const fn alt<I,O,P:Into<Alt<I,O,P>>>(ps:P) -> Alt<I,O,P> {
+pub const fn alt<I,P:Into<Alt<I,P>>>(ps:P) -> Alt<I,P> {
   Alt::new(ps)
 }
 
