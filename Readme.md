@@ -19,6 +19,12 @@ you will need depending on what kinda input you are parsing. Parsers have to ret
 This is a bit annoying cause good error handling is one of the harder parts of actually writing parsers. and that's a kind
 of thing you'd want something like this to help with.
 
+As well there is a problem with some of the compilation errors on the stuff implemented with macros i.e. alt/branch/sequential. 
+Basically if you fail one of their implementation bounds you get a big C++ template esque error that isn't very helpful,
+say for example you wanted a sequence that looked like (p1,p2,p3) and p2 implemented a different error type than the other 2
+well seqs all need the same error type, so you would get an error like "the trait bound parser<{input}> isn't satisfied for (a,b,c) .... blah blah blah"
+but it won't tell you what exactly is wrong. 
+
 ## types of input
 right now the library doesn't really say anthing about the kind of input you can parse. If you want to use a lot of the combinators
 your input will need the `Clone` trait. this is becase a lot of things need to backtrack.
@@ -35,9 +41,8 @@ this library uses macros to implement some traits on sets of tuples. It's stuff 
 because arryas have to be homogenously typed and parsers, at least the way I'm doing them, tend to all have different types. 
 You can do some tricks with dyn but I think it's preferable not to.
 
-That being said some of the ways I've written the macros aren't the greatest, I've opted for making them easier to read
-meaning they tend to expand to big linear blobs,rather than nice recursive steps. This can cause them to give big nasty
-errors if you type something wrong.
+That being said some of the ways I've written the macros aren't the greatest. I need to figure out how to get them to give
+better errors
 
 ## some helpers for actually doing a parser right
 based on my time using this there are some convenience things that I end up making over again. For example when parsing
