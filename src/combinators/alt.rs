@@ -24,10 +24,12 @@ macro_rules! alt_parser_impl {
 
   ($P:ident) => {
   };
+
   ($First:ident, $($Rest:ident),+) => {
     alt_parser_impl!(__frfr; $First, $($Rest),+);
     alt_parser_impl!($($Rest),+);
   };
+
   (__frfr; $($PARSER:ident),+) => {
     impl<IN:Clone, OUT, $($PARSER),+> From<($($PARSER),+)> for Alt<IN,($($PARSER,)+)> 
     where $($PARSER:Parser<IN,Out=OUT>,)+
@@ -47,7 +49,7 @@ macro_rules! alt_parser_impl {
       type Error=($($PARSER::Error),+);
       type Out = OUT;
 
-      fn parse(&self,txt:IN)->Result<(OUT,IN),Self::Error> {
+      fn parse(self,txt:IN)->Result<(OUT,IN),Self::Error> {
         let Alt{ ps:($($PARSER),+),.. } = self;
 
         //this works cause let A = match A will get the variables right
@@ -57,6 +59,12 @@ macro_rules! alt_parser_impl {
         };)+
 
         Err(($($PARSER),+))
+      }
+    }
+
+    impl<In:Clone,$($PARSER:Clone),+> Clone for Alt<In,($($PARSER,)+)> {
+      fn clone(&self) -> Self {
+        Self { ps:self.ps.clone(),_ghost:std::marker::PhantomData }
       }
     }
   }
@@ -102,19 +110,21 @@ mod tests {
   #[test]
   fn test_alts() {
     let z = alt((dog,cat,fish));
-
     let (out,res) = z.parse("dogzone").expect("the dog parser should succeed");
     assert_eq!("dog",out);
     assert_eq!("zone",res);
 
+    let z = alt((dog,cat,fish));
     let (out,res) = z.parse("fisherman").expect("the fish parser should succeed");
     assert_eq!("fish",out);
     assert_eq!("erman",res);
 
+    let z = alt((dog,cat,fish));
     let (out,res) = z.parse("catseldorf").expect("the cat parser should succeed");
     assert_eq!("cat",out);
     assert_eq!("seldorf",res);
 
+    let z = alt((dog,cat,fish));
     let bad = z.parse("if you can't hang with the big dog, get off the porch")
     .expect_err("this should error all over the place");
     assert!(matches!(bad,("oh no",15,false)));

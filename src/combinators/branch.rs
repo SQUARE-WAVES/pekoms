@@ -39,7 +39,7 @@ macro_rules! branch_impl {
       type Error= Option<ER>;
       type Out = OUT;
 
-      fn parse(&self,txt:IN)->Result<(OUT,IN),Self::Error> {
+      fn parse(self,txt:IN)->Result<(OUT,IN),Self::Error> {
         let Branch{ ps:($($Seg),+),.. } = self;
 
         //this works cause let A = match A will get the variables right
@@ -80,32 +80,55 @@ mod test {
     inp.strip_prefix(" ").map(|r|(" ",r)).ok_or(3)
   }
 
+  fn seq1(inp:&str) -> Result<(usize,&str),Option<&'static str>> {
+    (dot,dash,dot).map(|_|1)
+    .map_err(|e| Some(e).take_if(|e|*e != 1).map(|_|"seq1"))
+    .parse(inp)
+  }
+
+  fn seq2(inp:&str) -> Result<(usize,&str),Option<&'static str>> {
+    (dash,dot,dash,dot,dot).map(|_|2)
+    .map_err(|e| Some(e).take_if(|e|*e != 2)
+    .map(|_|"seq2"))
+    .parse(inp)
+  }
+
+fn seq3(inp:&str) -> Result<(usize,&str),Option<&'static str>> {
+    (space,dot,dash,dot,dot).map(|_|3)
+    .map_err(|e| Some(e).take_if(|e|*e != 3)
+    .map(|_|"seq3"))
+    .parse(inp)
+  }
+
 
   #[test]
   fn test_branch() {
-    let seq1 = (dot,dash,dot).map(|_|1).map_err(|e| Some(e).take_if(|e|*e != 1).map(|_|"seq1"));
-    let seq2 = (dash,dot,dash,dot,dot).map(|_|2).map_err(|e|Some(e).take_if(|e|*e!=2).map(|_|"seq2"));
-    let seq3 = (space,dot,dash,dot,dot).map(|_|3).map_err(|e|Some(e).take_if(|e|*e!=3).map(|_|"seq3"));
 
     let b = branch((seq1,seq2,seq3));
     let (good1,_) = b.parse(".-.").expect("1st seq shouldn't fail");
     assert_eq!(good1,1);
 
+    let b = branch((seq1,seq2,seq3));
     let (good2,_) = b.parse("-.-..").expect("2nd seq shouldn't fail");
     assert_eq!(good2,2);
 
+    let b = branch((seq1,seq2,seq3));
     let (good3,_) = b.parse(" .-..").expect("3rd seq shouldn't fail");
     assert_eq!(good3,3);
 
+    let b = branch((seq1,seq2,seq3));
     let bad1 = b.parse(". .").expect_err("the first segment should fail");
     assert!(matches!(bad1,Some("seq1")));
 
+    let b = branch((seq1,seq2,seq3));
     let bad2 = b.parse("- .").expect_err("the 2nd segment should fail");
     assert!(matches!(bad2,Some("seq2")));
 
+    let b = branch((seq1,seq2,seq3));
     let bad3 = b.parse(" - ").expect_err("the 3nd segment should fail");
     assert!(matches!(bad3, Some("seq3")));
 
+    let b = branch((seq1,seq2,seq3));
     let bad4 = b.parse("#asdf").expect_err("all segments should fail");
     assert!(bad4.is_none());
   }

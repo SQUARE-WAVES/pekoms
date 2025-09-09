@@ -55,27 +55,38 @@ fn elem(input:&str) -> Result<(Element,&str),()> {
   .parse(input)
 }
 
+fn list_elems(inp:&str) -> Result<(Vec<Element>,&str),()>{
+  let mut out : Vec<Element> = vec![];
+  let (_,r) =iter::sep_list(elem,sep,|e|out.push(e)).parse(inp)?;
+  Ok((out,r))
+}
+
 fn list(input:&str) -> Result<(Element,&str),()> {
-  use iter::vector::sep_list;
-  let seq = (pfx("["),optional(ws),sep_list(elem,sep),optional(ws),pfx("]"));
+  let seq = (pfx("["),optional(ws),list_elems,optional(ws),pfx("]"));
   seq.map(|(_open,_gap,elems,_end_gap,_close)|Element::List(elems)).parse(input)
 }
 
-fn obj(input:&str) -> Result<(Element,&str),()> {
-  use iter::vector::sep_list;
-  let pair = (quoted,optional(ws),pfx(":"),optional(ws),elem).map(|(k,_,_,_,v)|(k,v));
-  let seq = (pfx("{"),optional(ws),sep_list(pair,sep),optional(ws),pfx("}"));
+type ObjPair<'a> = (&'a str,Element<'a>);
 
+fn obj_pairs(inp:&str) -> Result<(Vec<ObjPair>,&str),()> {
+  let mut out : Vec<(&str,Element)> = vec![];
+  let pair = (quoted,optional(ws),pfx(":"),optional(ws),elem).map(|(k,_,_,_,v)|(k,v));
+  let (_,r) =iter::sep_list(pair,sep,|e|out.push(e)).parse(inp)?;
+  Ok((out,r))
+}
+
+fn obj(input:&str) -> Result<(Element,&str),()> {
+  let seq = (pfx("{"),optional(ws),obj_pairs,optional(ws),pfx("}"));
   seq.map(|(_open,_gap,pairs,_end_gap,_close)|Element::Obj(pairs)).parse(input)
 }
 
 fn main() {
   let out = elem.parse("{\"cats\" : [null, 1,\n\n true, -3.2, \"hogs\", false] }");
-  println!("{:?}",out);
+  println!("{out:?}");
   
   let out = elem.parse("null");
-  println!("{:?}",out);
+  println!("{out:?}");
 
   let out = elem.parse("{\"a\":\"b\",   \"fish\":[   1,2,3,4  ]}");
-  println!("{:?}",out);
+  println!("{out:?}");
 }

@@ -1,114 +1,53 @@
 use crate::Parser;
-use crate::basics::optional;
 
-pub struct ParseIter<'a,I,P> {
-  parser:&'a P,
-  input:I,
+type Pres<I,O,P> = Result<(O,I),<P as Parser<I>>::Error>;
+
+pub const fn accum<I,P,F>(p:P,d:P::Out,mut a:F) -> impl FnOnce(I) -> Pres<I,(),P>
+where
+  P:Parser<I> + Clone,
+  P::Out:PartialEq,
+  F:FnMut(P::Out),
+{
+  move|mut inp| {
+    loop {
+      let (o,rest) = p.clone().parse(inp)?;
+      if o == d {
+        break Ok(((),rest))
+      }
+      else {
+        a(o)
+      }
+
+      inp = rest;
+    }
+  }
 }
 
-impl<I,P> Iterator for ParseIter<'_,I,P>
+
+pub const fn sep_list<I,P1,P2,F>(p:P1,sep:P2,mut a:F) -> impl FnOnce(I) -> Pres<I,(),P1> 
 where
   I:Clone,
-  P:Parser<I>
+  P1:Parser<I> + Clone,
+  P2:Parser<I> + Clone,
+  F:FnMut(P1::Out)
 {
-  type Item = P::Out;
+  move |mut inp| {
+    let rem = loop{
+      inp = match p.clone().parse(inp.clone()) {
+        Ok((o,r)) => {
+          a(o);
+          r
+        },
+        Err(_) => break inp,
+      };
 
-  fn next(&mut self) -> Option<Self::Item> {
-    let inp = self.input.clone();
-    match self.parser.parse(inp) {
-      Ok((out,rest)) => {
-        self.input = rest;
-        Some(out)
-      }
-      Err(_) => {
-        None
-      }
-    }
-  }
-}
+      inp = match sep.clone().parse(inp.clone()) {
+        Ok((_,r)) => r,
+        Err(_) => break inp
+      };
+    };
 
-impl<'a,I,P> ParseIter<'a,I,P>
-where
-  I:Clone,
-  P:Parser<I>
-{
-  pub fn new(parser:&'a P,input:I) -> Self {
-    Self {
-      parser,
-      input
-    }
-  }
- 
-  pub fn remains(self) -> I {
-    self.input
-  }
-}
-
-pub mod vector {
-  use super::*;
-
-  pub const fn star<I,P>(parser:P) -> impl Parser<I,Out=Vec<P::Out>,Error=P::Error> 
-  where
-    I:Clone,
-    P:Parser<I>
-  {
-    move |txt:I| {
-      let mut iter = ParseIter::new(&parser,txt);
-      let v = (&mut iter).collect();
-      Ok((v,iter.input))
-    }
-  }
-  
-  pub const fn plus<I,P>(parser:P) -> impl Parser<I,Out=Vec<P::Out>,Error=P::Error> 
-    where
-    I:Clone,
-    P:Parser<I>
-  {
-    move |txt:I| {
-      let (iv,rest) = parser.parse(txt)?;
-      let mut iter = ParseIter::new(&parser,rest);
-      let v = std::iter::once(iv).chain(&mut iter).collect();
-      Ok((v,iter.input))
-    }
-  }
-
-  pub const fn sep_list<I,P,P2>(item:P,sep:P2) -> impl Parser<I,Out=Vec<P::Out>,Error=P::Error> 
-  where
-    I:Clone,
-    P:Parser<I>,
-    P2:Parser<I,Error=P::Error>
-  {
-    let parse_seq = (item,optional(sep));
-    move |txt:I| {
-      
-      let mut iter = ParseIter::new(&parse_seq,txt);
-      let v = (&mut iter).map(|(o,_)|o).collect();
-      Ok((v,iter.input))
-    }
-  }
-
-  //this is a sep list with a minimum of one match!
-  pub const fn sep_list_plus<I,P,P2>(i:P,sp:P2) -> impl Parser<I,Out=Vec<P::Out>,Error=P::Error> 
-  where
-    I:Clone,
-    P:Parser<I>,
-    P2:Parser<I,Error=P::Error>
-  {
-    let parse_seq = (i,optional(sp));
-    move |txt:I| {
-      match parse_seq.parse(txt) {
-        Err(e) => Err(e),
-
-        Ok(((item,None),rest)) => Ok((vec![item],rest)),
-
-        Ok(((item,Some(_)),rest)) => {
-          let mut iter = ParseIter::new(&parse_seq,rest);
-          let mapped = (&mut iter).map(|(i,_)|i);
-          let v = std::iter::once(item).chain(mapped).collect();
-          Ok((v,iter.input))
-        }
-      }
-    }
+    Ok(((),rem))
   }
 }
 
@@ -116,83 +55,67 @@ pub mod vector {
 mod tests {
   use super::*;
 
-  //anything but a comma
-  fn guy(input: &str) -> Result<(&str,&str),()> {
-    match input.chars().next() {
-      None => Err(()),
-      Some(s) if s.is_alphanumeric() => Ok(input.split_at(s.len_utf8())),
-      _ => Err(())
+  fn dig(s:&str) -> Result<(Option<isize>,&str),()> {
+    if s.is_empty() {
+      Ok((None,s))
+    }
+    else {
+      match &s[0..1].parse::<isize>() {
+        Ok(n) => Ok((Some(*n),&s[1..])),
+        Err(_) => Err(())
+      }
     }
   }
 
-  fn bad_guy(input: &str) -> Result<(&str,&str),()> {
-    match input{
-      "" => Err(()),
-      s if s.starts_with("f") => Err(()),
-      s => Ok((&s[0..1],&input[1..]))
-    }
+  fn ltr(s:&str) -> Result<((),&str),()> {
+    s.strip_prefix(|c:char|c.is_alphabetic()).map(|r|((),r)).ok_or(())
   }
 
-  fn comma(input: &str) -> Result<(&str,&str),()> {
-    input.strip_prefix(",").map(|r|(",",r)).ok_or(())
+  fn comma(s:&str) -> Result<(&str,&str),()> {
+    s.strip_prefix(",").map(|r|(",",r)).ok_or(())
   }
 
   #[test]
-  fn check_star_vec() {
-    let z = vector::star(guy);
+  fn test_accum() {
+    let mut val = 0;
+    
+    let (_,s) = accum(dig,None,|v|val += v.unwrap())
+    .parse("123456789").expect("it shouldn't error");
 
-    let (out,res) = z.parse("fish").expect("it should go!");
-    assert_eq!(vec!["f","i","s","h"],out,"the parse should go right");
-    assert_eq!("",res,"all the input should be used up");
+    assert!(s.is_empty(),"string should be used up");
+    assert_eq!(val,45);
 
-    let z = vector::star(bad_guy);
-
-    let (out,res) = z.parse("dangfish").expect("it should go!");
-    assert_eq!(vec!["d","a","n","g"],out,"the short parse should go right");
-    assert_eq!("fish",res,"some input should remain");
+    let mut val = 0;
+    accum(dig,None,|v|val += v.unwrap()).parse("12345%67").expect_err("it should error");
   }
 
   #[test]
-  fn check_plus_vec() {
-    let z = vector::plus(bad_guy);
+  fn test_sep_list() {
+    let mut val = 0;
+    let words = "q,f,p,n";
 
-    let bad = z.parse("fish");
-    assert!(bad.is_err(),"the line fish should fail to parse");
+    sep_list(ltr,comma,|_|val+=1)(words).expect("should work fine");
+    assert_eq!(val,4);
 
-    let (out,res) = z.parse("stabs").expect("it should go!");
-    assert_eq!(vec!["s","t","a","b","s"],out,"the non-fish parse should go right");
-    assert_eq!("",res,"the input should all get used up");
-  }
+    let mut val = 0;
+    let words = "a,b,c,";
 
-  #[test]
-  fn check_sep_list_vec() {
-    let z = vector::sep_list(guy,comma);
+    sep_list(ltr,comma,|_|val+=1)(words).expect("should work fine");
+    assert_eq!(val,3);
 
-    let (out,res) = z.parse(",f,i,s,h").expect("rudy can't fail");
-    assert!(out.is_empty(),"no items should be found in the first list");
-    assert_eq!(",f,i,s,h",res,"no text should be consumed");
+    let mut val = 0;
+    let words = "aa,b,c";
 
-    let (out,res) = z.parse("s,t,a,b,s").expect("it should go!");
-    assert_eq!(vec!["s","t","a","b","s"],out,"the non-fish parse should go right");
-    assert_eq!("",res,"the input should all get used up");
-  }
+    let (_,rest) = sep_list(ltr,comma,|_|val+=1)(words).expect("should work fine");
+    assert_eq!(val,1);
+    assert_eq!(rest,&words[1..]);
 
-  #[test]
-  fn check_sep_list_plus_vec() {
-    let z = vector::sep_list_plus(guy,comma);
+    let mut val = 0;
+    let words = "a,b c";
 
-    z.parse(",f,i,s,h").expect_err("rudy should fail!");
-
-    let (out,res) = z.parse("s,t,a,b,s").expect("it should go!");
-    assert_eq!(vec!["s","t","a","b","s"],out,"the non-fish parse should go right");
-    assert_eq!("",res,"the input should all get used up");
-
-
-    //this should match just one item with no separator
-    let (out,res) = z.parse("s ffff").expect("it should go!");
-    assert_eq!(vec!["s"],out);
-    assert_eq!(" ffff",res);
+    let (_,rest) = sep_list(ltr,comma,|_|val+=1)(words).expect("should work fine");
+    assert_eq!(val,2);
+    assert_eq!(rest," c");
   }
 }
-
 
