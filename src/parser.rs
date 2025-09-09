@@ -1,62 +1,168 @@
 //the main parser trait, its just a function that
 //takes an input and returns an option with an output
 //and a residual input so for example a parser which reads
-//the first value of a string might look like fn(&str) -> Option<(&str,&str)>
-//
-//the input has Clone because you might need to look at it more than once with
-//things like AND and OR parsers, however in practice it will usually be a kind of reference
-//like &str or &[u8] or &[something else], most of the cloning will just be a pointer
+//the first value of a string might look like FnOnce(&str) -> Result<(&str,&str),()>
 
 pub trait Parser<I> {
   type Error;
   type Out;
 
-  fn parse(&self,input:I) -> Result<(Self::Out,I),Self::Error>;
-  //Output mods
-  //these are handy functions that allow you to modify the output of an existing parser
-  //they are analagous to the same methods on the Result type, as they basically
-  //just make a thunk which uses the result methods on the non-residual portion
-  //of the output
-  
-  fn map<O2,F:Fn(Self::Out)->O2>(self,f:F) -> impl Parser<I,Out=O2,Error=Self::Error> 
+  fn parse(self,input:I) -> Result<(Self::Out,I),Self::Error>;
+
+  //really these should be const
+  fn map<O2,F:FnOnce(Self::Out)->O2>(self,f:F) -> Map<I,O2,Self,F>
   where
     Self: std::marker::Sized
   {
-    move |i|{
-      self.parse(i).map(|(out,residual)|{
-        (f(out),residual)
-      })
+    Map{
+      p:self,
+      mapper:f,
+      _ghost:std::marker::PhantomData
     }
   }
 
-  fn and_then<O2,F>(self,f:F) -> impl Parser<I,Out=O2,Error=Self::Error>
+  fn and_then<O2,F>(self,f:F) -> AndThen<I,O2,Self,F>
   where 
     Self: std::marker::Sized,
     F:Fn(Self::Out)->Result<O2,Self::Error>
   {
-    move |i|{
-      self.parse(i).and_then(|(out,residual)|{
-        f(out).map(|r|(r,residual))
-      })
+    AndThen {
+      p:self,
+      next:f,
+      _ghost:std::marker::PhantomData
     }
   }
 
-  fn map_err<E2,F:Fn(Self::Error) -> E2>(self,f:F) -> impl Parser<I,Out=Self::Out,Error=E2> 
+  fn map_err<E2,F:FnOnce(Self::Error) -> E2>(self,f:F) -> MapErr<I,E2,Self,F>
   where
     Self: std::marker::Sized
   {
-    move |i|{
-      self.parse(i).map_err(&f)
+    MapErr {
+      p:self,
+      mapper:f,
+      _ghost:std::marker::PhantomData
     }
   }
 }
 
-impl<I,O,E,F:Fn(I)->Result<(O,I),E>> Parser<I> for F {
+//Blanket impl for parsing functions
+impl<I,O,E,F:FnOnce(I)->Result<(O,I),E>> Parser<I> for F {
   type Error=E;
   type Out=O;
 
-  fn parse(&self, txt:I) -> Result<(O,I),E> {
+  fn parse(self, txt:I) -> Result<(O,I),E> {
     self(txt)
+  }
+}
+
+pub struct Map<I,O2,P,F> {
+  p:P,
+  mapper:F,
+  _ghost:std::marker::PhantomData<(I,O2)>
+}
+
+impl<I,O2,P,F> Parser<I> for Map<I,O2,P,F> 
+where
+  P:Parser<I>,
+  F:FnOnce(P::Out) -> O2
+{
+  type Out=O2;
+  type Error=P::Error;
+
+  fn parse(self,inp:I) -> Result<(Self::Out,I),Self::Error> {
+    match self.p.parse(inp) {
+      Ok((v,r)) => Ok(((self.mapper)(v),r)),
+      Err(e) => Err(e)
+    }
+  }
+}
+
+impl <I,O2,P,F> Clone for Map<I,O2,P,F>
+where
+  P:Clone,
+  F:Clone
+{
+  fn clone(&self) -> Self {
+    Map{
+      p:self.p.clone(),
+      mapper:self.mapper.clone(),
+      _ghost:std::marker::PhantomData
+    }
+  }
+}
+
+pub struct MapErr<I,E2,P,F> {
+  p:P,
+  mapper:F,
+  _ghost:std::marker::PhantomData<(I,E2)>
+}
+
+impl<I,E2,P,F> Parser<I> for MapErr<I,E2,P,F> 
+where
+  P:Parser<I>,
+  F:FnOnce(P::Error) -> E2
+{
+  type Out=P::Out;
+  type Error=E2;
+
+  fn parse(self,inp:I) -> Result<(Self::Out,I),Self::Error> {
+    match self.p.parse(inp) {
+      Ok((v,r)) => Ok((v,r)),
+      Err(e) => Err((self.mapper)(e))
+    }
+  }
+}
+
+impl <I,E2,P,F> Clone for MapErr<I,E2,P,F>
+where
+  P:Clone,
+  F:Clone
+{
+  fn clone(&self) -> Self {
+    MapErr{
+      p:self.p.clone(),
+      mapper:self.mapper.clone(),
+      _ghost:std::marker::PhantomData
+    }
+  }
+}
+
+pub struct AndThen<I,O2,P,F> {
+  p:P,
+  next:F,
+  _ghost:std::marker::PhantomData<(I,O2)>
+}
+
+impl<I,O2,P,F> Parser<I> for AndThen<I,O2,P,F> 
+where
+  P:Parser<I>,
+  F:FnOnce(P::Out) -> Result<O2,P::Error>
+{
+  type Out=O2;
+  type Error=P::Error;
+
+  fn parse(self,inp:I) -> Result<(Self::Out,I),Self::Error> {
+    match self.p.parse(inp) {
+      Ok((v,r)) => match (self.next)(v) {
+        Ok(v2) => Ok((v2,r)),
+        Err(e) => Err(e)
+      },
+      Err(e) => Err(e)
+    }
+  }
+}
+
+impl <I,O2,P,F> Clone for AndThen<I,O2,P,F>
+where
+  P:Clone,
+  F:Clone
+{
+  fn clone(&self) -> Self {
+    AndThen{
+      p:self.p.clone(),
+      next:self.next.clone(),
+      _ghost:std::marker::PhantomData
+    }
   }
 }
 
@@ -93,6 +199,7 @@ mod tests {
     assert_eq!(out,1,"the parser should match the first letter count it");
     assert_eq!("ibbles",res,"the rest of the string should be the residual");
 
+    let z = guy.and_then(fzer);
     let bad = z.parse("fish");
     assert!(bad.is_err(),"the word fish should fail to parse");
   }

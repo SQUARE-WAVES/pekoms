@@ -141,7 +141,7 @@ pub fn end(input:&str) -> Result<(&str,&str),()> {
   }
 }
 
-pub const fn pfx(word: &'static str) -> impl Fn(&str)->Result<(&str,&str),()> {
+pub const fn pfx(word: &'static str) -> impl Fn(&str)->Result<(&str,&str),()> + Clone {
   move |inp| {
     inp.strip_prefix(word) 
     .map(|rest|(word,rest))
@@ -169,6 +169,6 @@ pub fn quoted(input:&str) -> Result<(&str,&str),()> {
   .and_then(|rest|{
     rest.char_indices().find(|(_i,c)|*c == '"')
     .ok_or(()) 
-    .map(|(i,_c)|rest.split_at(i+1)) //this i+1 is safe because we know " is len 1
+    .map(|(i,_c)|(&rest[..i],&rest[i+1..]))
   })
 }

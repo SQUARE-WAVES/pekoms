@@ -1,17 +1,44 @@
 use crate::Parser;
 
+//this sucks but you need to do newtypes to do traits good
+pub struct OptPars<P,I> {
+  pars:P,
+  _ghost:std::marker::PhantomData<I>
+}
+
+impl<I:Clone,P:Parser<I>> Parser<I> for OptPars<P,I> {
+  type Out=Option<P::Out>;
+  type Error=P::Error;
+
+  fn parse(self,input:I) -> Result<(Self::Out,I),Self::Error> {
+    match self.pars.parse(input.clone()) {
+      Ok((v,r)) => Ok((Some(v),r)),
+      Err(..) => Ok((None,input))
+    }
+  }
+}
+
+impl<I:Clone,P:Clone> Clone for OptPars<P,I> {
+  fn clone(&self) -> Self {
+    OptPars{
+      pars:self.pars.clone(),
+      _ghost:std::marker::PhantomData
+    }
+  }
+}
+
+
 //this is a parser that will always succeed and return an optional value
-//it's handy for certain operations
-pub const fn optional<I,P>(p:P) -> impl Parser<I,Out=Option<P::Out>,Error=P::Error> 
+//I'm having this return the function trait as opposed to the parser
+//trait to get the auto clone impl
+pub const fn optional<I,P>(p:P) -> OptPars<P,I>
 where
   I:Clone,
-  P:Parser<I>
+  P:Parser<I> + Clone
 {
-  move |txt:I| -> Result<(Option<P::Out>,I),P::Error> {
-    match p.parse(txt.clone()) {
-      Ok((v,r)) => Ok((Some(v),r)),
-      Err(..) => Ok((None,txt))
-    }
+  OptPars{
+    pars:p,
+    _ghost:std::marker::PhantomData
   }
 }
 
@@ -30,7 +57,6 @@ mod tests
 
   #[test]
   fn test_optional() {
-
     let input = ".";
     let opt_dot = optional(dot);
     let opt_dash = optional(dash);

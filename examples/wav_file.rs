@@ -54,7 +54,7 @@ fn fmt_chunk(input:&[u8]) -> Result<(WavInfo,&[u8]),()> {
 
   chunk(FMT_HEADER)
   .and_then(|c|{
-    let seq = (u16_le,u16_le,u32_le,u32_le,u16_le,u16_le);
+    let mut seq = (u16_le,u16_le,u32_le,u32_le,u16_le,u16_le);
     seq.parse(c).map(|(nfo,_rem)|nfo.into())
   })
   .parse(input)

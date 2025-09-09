@@ -15,7 +15,7 @@ macro_rules! sequential_parser_impl {
       type Error= $First::Error;
       type Out = $First::Out;
 
-      fn parse(&self,txt:Inp)->Result<(Self::Out,Inp),Self::Error> {
+      fn parse(self,txt:Inp)->Result<(Self::Out,Inp),Self::Error> {
         self.0.parse(txt)
       }
     }
@@ -37,7 +37,7 @@ macro_rules! sequential_parser_impl {
       type Error= Er;
       type Out = ($First::Out, $($Parser::Out),+);
 
-      fn parse(&self,txt:Inp)->Result<(Self::Out,Inp),Self::Error> {
+      fn parse(self,txt:Inp)->Result<(Self::Out,Inp),Self::Error> {
         let ($First, $($Parser),+) = self;
         let ($First,txt) = $First.parse(txt)?;
         $(let ($Parser,txt) = $Parser.parse(txt)?;)+
@@ -69,31 +69,34 @@ mod tests
   #[test]
   fn seq_parser() {
     let morse_s = (dot,dot,dot);
-    let morse_o = (dash,dash,dash);
-    let morse_sos = (morse_s,space,morse_o,space,morse_s);
-    
     let (out,res) = morse_s.parse("...").expect("S shouldn't fail to parse");
     assert_eq!((".",".","."),out);
     assert_eq!("",res);
 
+    let morse_s = (dot,dot,dot);
     let bad = morse_s.parse("..F.");
     assert!(bad.is_err(),"the s parser should fail if there is another letter in there");
 
 
+    let morse_s = (dot,dot,dot);
     let bad = morse_s.parse("..");
     assert!(bad.is_err(),"a sequential parser should fail if there isn't enough input");
 
+    let morse_o = (dash,dash,dash);
     let (out,res) = morse_o.parse("--- HEY!").expect("O shouldn't fail to parse");
     assert_eq!(("-","-","-"),out);
     assert_eq!(" HEY!",res);
     
+    let morse_o = (dash,dash,dash);
     let bad = morse_o.parse(".---");
     assert!(bad.is_err());
 
+    let morse_sos = (morse_s,space,morse_o,space,morse_s);
     let (out,res) = morse_sos.parse("... --- ...").expect("SOS shouldn't fail to parse");
     assert_eq!(((".",".",".")," ",("-","-","-")," ",(".",".",".")),out);
     assert_eq!("",res);
 
+    let morse_sos = (morse_s,space,morse_o,space,morse_s);
     let bad = morse_sos.parse("...---...");
     assert!(bad.is_err());
   }
