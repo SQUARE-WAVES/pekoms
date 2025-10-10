@@ -1,8 +1,6 @@
 use pekoms::{
   Parser,
   alt::alt,
-  iter,
-  basics::optional,
 };
 
 mod parsers;
@@ -101,8 +99,10 @@ fn main() {
   let mut sys = Sys::default();
 
   let operation = alt((num,add,sub,mul,div,def_s,def_e,word));
+
   //define 10 + as "pz" call pz with 1 as the arg (11) then add 1 then divide by 3 to get 4"
   let mut input = "[10 +]pz 1 pz 1 + 3 /";
+
   loop {
     if input.is_empty() {
       break;
