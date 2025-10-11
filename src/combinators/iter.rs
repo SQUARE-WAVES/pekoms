@@ -23,7 +23,6 @@ where
   }
 }
 
-
 pub const fn sep_list<I,P1,P2,F>(p:P1,sep:P2,mut a:F) -> impl FnOnce(I) -> Pres<I,(),P1> 
 where
   I:Clone,
@@ -32,7 +31,7 @@ where
   F:FnMut(P1::Out)
 {
   move |mut inp| {
-    let rem = loop{
+    let rem = loop {
       inp = match p.clone().parse(inp.clone()) {
         Ok((o,r)) => {
           a(o);
